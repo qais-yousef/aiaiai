@@ -1,0 +1,360 @@
+#!/bin/sh -efu
+
+# Copyright 2011-2012 Intel Corporation
+# Author: Artem Bityutskiy
+# License: GPLv2
+
+srcdir="$(readlink -ev -- ${0%/*}/..)"
+PATH="$srcdir:$srcdir/email:$srcdir/libshell:$PATH"
+
+. shell-error
+. shell-args
+. shell-signal
+. sh-functions
+
+PROG="${0##*/}"
+message_time="yes"
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] <workdir>
+
+This is a very simple local LDA which filters out all e-mails except patches
+and stores the result in the "<workdir>/queue and <workdir>/queue_saved"
+directories (both stand-alone patches and patch-sets are stored as one mbox
+file). The "<workdir>/lda_tmp" directory is used for temporary storing not
+yet complete patch series.
+
+Additionally, this program stores all the incoming mail in the
+"<workdir>/mail" mail archive.
+
+<workdir>              - the working directory.
+
+Options:
+      --reap-archive=MIN     remove all files created earlier than MIN
+                             minutes ago from the mail archive directory;
+      --reap-incomplete=MIN  remove all incomplete patch series older than
+                             current time minus MIN minutes;
+  -v, --verbose              be verbose;
+  -h, --help                 show this text and exit.
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+reject()
+{
+	local file="$1"; shift
+	local reason="$1" shift
+
+	local subj="$(fetch_header_or_die "Subject" < "$file")"
+	local from="$(fetch_header_or_die "From" < "$file")"
+	local id="$(fetch_header_or_die "Message-Id" < "$file")"
+
+	message "Rejecting \"$from: $subj (Message-Id: $id)\""
+	message "Reason: $1"
+	rm $verbose -- "$file" >&2
+}
+
+# Generate unique name - a bit more readable than mktemp creates. We assume
+# that we exclusively own the directory where we create the temporary file.
+seq_name()
+{
+	local where="$1"; shift
+	local name="$1"; shift
+	local i=0
+
+	while [ -e "${where}/${name}_${i}" ]; do
+		i="$(($i+1))"
+	done
+	printf "%s" "$where/$name-$i"
+}
+
+queue_mboxfile()
+{
+	local fname="$(seq_name "$queue" "${date}_${m}-of-${n}")"
+	cp $verbose -- "$mbox" "$queue_saved/${fname##*/}" >&2
+	mv $verbose -- "$mbox" "$fname" >&2
+}
+
+find_relatives()
+{
+	local where="$1"; shift
+	local id="$1"; shift
+	local parent_id="$1"; shift
+
+	# Find the parent, children, and brothers
+	LC_ALL=C grep -l -r -- "In-Reply-To: $id" "$where" ||:
+	if [ -n "$parent_id" ]; then
+		LC_ALL=C grep -l -r -- "Message-Id: $parent_id" "$where" ||:
+		LC_ALL=C grep -l -r -- "In-Reply-To: $parent_id" "$where" ||:
+	fi
+}
+
+move_to_series()
+{
+	local file="$1"; shift
+	local dir="$1"; shift
+	local n="$1"; shift
+
+	local subj="$(fetch_header_or_die "Subject" < "$file")"
+	local m="$(subject_m "$subj")"
+
+	message "Moving patch (\"$subj\") the series directory"
+
+	# Sanity check - n has to be the same
+	if ! [ "$(subject_n "$subj")" -eq "$n" ]; then
+		reject "$file" "We were processing patch m/$n, but found a relative $m/$n"
+		return
+	fi
+
+	# File $m must not exist
+	if [ -f "$dir/$m" ]; then
+		reject "$file" "File \"$dir/$m\" already exists!"
+	else
+		mv $verbose -- "$file" "$dir/$m" >&2
+	fi
+}
+
+process_series_mbox()
+{
+	local id="$1"; shift
+	local m="$1"; shift
+	local n="$1"; shift
+	local fname
+	local dir
+
+	# Only patch 1/n is allowed to have no parent
+	local parent_id="$(fetch_header "In-Reply-To" < "$mbox")"
+	if [ -z "$parent_id" ] && [ "$m" != 1 ]; then
+		reject "$mbox" "In-Reply-To header not found"
+		return
+	fi
+
+	[ -z "$parent_id" ] || verbose "In-Reply-To: $parent_id"
+
+	local staging_relatives
+	local series_relatives
+	staging_relatives="$(find_relatives "$staging" "$id" "$parent_id" | sort -u)"
+	series_relatives="$(find_relatives "$series" "$id" "$parent_id" | sort -u)"
+
+	verbose "Staging relatives: $staging_relatives"
+	verbose "Series relatives:  $series_relatives"
+
+	if [ -z "$staging_relatives" ] && [ -z "$series_relatives" ]; then
+		# Save the file in the staging area
+		fname="$(seq_name "$staging" "${date}_${m}-of-${n}")"
+		message "No relatives found, temporarily save in staging"
+		mv $verbose -- "$mbox" "$fname" >&2
+		return
+	fi
+
+	message "Found relatives"
+
+	if [ -z "$series_relatives" ]; then
+		# The series directory does not exist yet - create it
+		dir="$(seq_name "$series" "${date}_${n}")"
+		message "Creating the series directory \"$dir\""
+		mkdir $verbose -- "$dir" >&2
+	else
+		dir="$(printf "%s" "$series_relatives" | sed -e "s/\(.*\)\/.*/\1/" | sort -u)"
+		message "Found series directory \"$dir\""
+		[ "$(printf "%s" "$dir" | wc -l)" -eq 0 ] ||
+			fatal "Relatives live in different series directories!"
+	fi
+
+	# Move the relatives from the staging to the series directory
+	move_to_series "$mbox" "$dir" "$n"
+
+	local relative
+	for relative in $staging_relatives; do
+		move_to_series "$relative" "$dir" "$n"
+	done
+
+	# If the series is complete - queue it
+	if [ "$(ls -1 -- "$dir" | wc -l)" -eq "$n" ]; then
+		message "Patch-set at \"$dir\" is complete, queue it"
+		for fname in $(ls -A -- "$dir" | sort -n); do
+			cat -- "$dir/$fname" >> "$mbox"
+			echo >> "$mbox"
+		done
+		queue_mboxfile
+		rm $verbose -rf -- "$dir" >&2
+	fi
+}
+
+# Process one e-mail stored in the $mbox temporary file
+process_mbox()
+{
+	if [ -n "$verbose" ]; then
+		printf "\n%s"   "----------------------------------------------------" >&2
+		printf "%s\n\n" "----------------------------------------------------" >&2
+	fi
+
+	# Make sure important headers are there
+	grep -i -q -- "^Message-Id:[[:blank:]]" "$mbox" ||
+		{ message "The \"Message-Id:\" header not found, ignoring"; return; }
+	grep -i -q -- "^From:[[:blank:]]" "$mbox" ||
+		{ message "The \"From:\" header not found, ignoring"; return; }
+	grep -i -q -- "^To:[[:blank:]]" "$mbox" ||
+		{ message "The \"To:\" header not found, ignoring"; return; }
+	grep -i -q -- "^Subject:[[:blank:]]" "$mbox" ||
+		{ message "The \"Subject:\" header not found, ignoring"; return; }
+
+	local subj="$(fetch_header "Subject" < "$mbox")"
+	local from="$(fetch_header "From" < "$mbox")"
+	local id="$(fetch_header "Message-Id" < "$mbox")"
+
+	verbose "Looking at: From: $from"
+	verbose "            Subject: $subj"
+	verbose "            Message-Id: $id"
+
+	# Filter out e-mails which do not start with the right prefix"
+	subject_check "$subj" ||
+		{ reject "$mbox" "\"$prefix_format\" prefix not found"; return; }
+
+	# If the patch prefix contains m/n, fetch m and n.
+	local m
+	local n
+	m="$(subject_m "$subj")"
+	n="$(subject_n "$subj")"
+
+	if [ -z "$m" ] || [ "$n" -eq 1 ]; then
+		[ "$m" != "0" ] || { message "Dropping patch \"0/1\""; return; }
+		message "Queueing stand-alone patch \"$subj\""
+		queue_mboxfile
+	else
+		message "Processing member $m/$n of a series (\"$subj\")"
+		[ "$n" -ne 0 ] || \
+			{ reject "$mbox" "Prefix \"$prefix_format\" cannot have n = 0";
+			  return; }
+		[ "$m" -ne 0 ] || \
+			{ message "Dropping patch \"0/$n\""; return; }
+		process_series_mbox "$id" "$m" "$n"
+	fi
+}
+
+reap_old()
+{
+	local dir="$1"; shift
+	local min="$1"; shift
+
+	verbose "Reaping files older than \"$min\" minutes in \"$dir\""
+	find "$dir" -mindepth 1 -mmin +"$min" -exec rm $verbose -f -- "{}" ";" >&2
+}
+
+mbox=
+lda_tmp_lock=
+cleanup_handler()
+{
+	rm $verbose -rf -- "$mbox" >&2
+	rm $verbose -rf -- "$lda_tmp_lock" >&2
+}
+set_cleanup_handler cleanup_handler
+
+TEMP=`getopt -n $PROG -o v,h --long reap-archive:,reap-incomplete:,verbose,help -- "$@"` ||
+	fail_usage ""
+eval set -- "$TEMP"
+
+archive_min=
+incomplete_min=
+verbose=
+
+while true; do
+	case "$1" in
+	--reap-archive)
+		archive_min=$(opt_check_number "$1" "$2")
+		shift
+		;;
+	--reap-incomplete)
+		incomplete_min=$(opt_check_number "$1" "$2")
+		shift
+		;;
+	-v|--verbose) verbose=-v
+		;;
+	-h|--help)
+		show_usage
+		exit 0
+		;;
+	--) shift; break
+                ;;
+	*) fail_usage "Unrecognized option: $1"
+		;;
+	esac
+	shift
+done
+
+[ "$#" -eq 1 ] || fatal "Insufficient or too many arguments"
+
+workdir=$(readlink -fv -- "$1");
+
+lda_tmp="$workdir/lda_tmp"
+mkdir -p $verbose -- "$lda_tmp" >&2
+
+# In the staging directory we temporarily store patches which belong to a
+# patch-set but, but we do not know which one yet.
+staging="$lda_tmp/staging"
+# The series directory stores partial patch-sets.
+series="$lda_tmp/series"
+# The mail directory sores all the incoming mail
+mail="$workdir/mail"
+# The queue directory stores patches/patch-sets queued for further processing
+queue="$workdir/queue"
+# It is also convenient for debugging to store a copy of complete patch-series
+# separately
+queue_saved="$workdir/queue_saved"
+
+mkdir -p $verbose -- "$staging" "$series" "$mail" "$queue" "$queue_saved" >&2
+
+# All file we create have the date in the name
+date="$(date "+%Y-%m-%d_%H:%M:%S")"
+
+# Currently processed patch is stored in $mbox
+mbox="$(mktemp -t "$PROG.mbox.XXXX")"
+
+# We lock the lda and queue directories when using them
+lda_tmp_lock="$workdir/lda_tmp.lock"
+
+verbose "Taking $lda_tmp_lock lock file (timeout - 10 min)"
+lockfile -r 75 "$lda_tmp_lock"
+
+prev=
+first=y
+
+# Read stdin and separate out individual mails
+verbose "Saving incoming mbox in ${mail}/${date}.mbox"
+while IFS= read -r line; do
+	printf "%s\n" "$line" >> "${mail}/${date}.mbox"
+	if printf "%s" "$line" | grep -i -q -- "^From [^@ ]\+@[^@ ]\+ .\+$" || \
+	   printf "%s" "$line" | grep -i -q -- "^From [[:xdigit:]]\{40\} .\+$"; then
+		if [ -z "$first" ]; then
+			if [ -n "$prev" ]; then
+				message "The last line of previous mbox is not blank"
+				message "line: $line"
+				message "prev: $prev"
+				fatal "exiting"
+			fi
+			process_mbox
+			truncate -s0 -- "$mbox"
+		fi
+	else
+		printf "%s\n" "$prev" >> "$mbox"
+	fi
+	prev="$line"
+	first=
+done
+
+printf "%s\n" "$prev" >> "$mbox"
+process_mbox
+
+[ -z "$incomplete_min" ] || reap_old "$lda_tmp" "$incomplete_min"
+[ -z "$archive_min" ] || reap_old "$mail" "$archive_min"
+[ -z "$archive_min" ] || reap_old "$queue_saved" "$archive_min"
+
+rm $verbose -f -- "$lda_tmp_lock" >&2

@@ -1,0 +1,187 @@
+#!/bin/sh -efu
+
+# Copyright 2011-2012 Intel Corporation
+# Author: Artem Bityutskiy
+# License: GPLv2
+
+. shell-error
+
+# Fetch the first occurrence of an mbox header from a file
+# Usage: fetch_header <header_name> < <mbox_file>
+fetch_header()
+{
+	local hdr="$1"
+
+	# Take only the first occurrence of the header
+	formail -z -c -x "$hdr:" | head -n1 | decode-rfc-2047
+}
+
+# The same as fetch_header, but exits with code 1 if the header hasn't been found
+# Usage: fetch_header_or_die <header_name> < <mbox_file>
+fetch_header_or_die()
+{
+	local hdr="$1"
+	local res="$(fetch_header "$hdr")"
+
+	[ -n "$res" ] || fatal "Cannot find the \"$hdr:\" header"
+	printf "%s\n" "$res"
+}
+
+fetch_all_headers()
+{
+	local hdr="$1"
+
+	# Take only the first occurrence of the header
+	formail -s sh -c "formail -z -c -x \"$hdr:\" | head -n1" | decode-rfc-2047
+}
+
+# All patches we deal with has to have the following prefix
+prefix_format="[PATCH <ver> <project> <m/n>]"
+
+# Reasonable number of blanks
+__ws="[[:blank:]]{0,4}"
+# Reasonable number of [blah] prefixes
+__prfx="(\[[^]]*\]${__ws}){0,4}"
+# Patch number pattern
+__num="0*([[:digit:]]+)"
+# The "PATCH" word for case-insensitive matching
+__patch="[Pp][Aa][Tt][Cc][Hh]"
+# Sed regexp matching correct subject
+__single="^${__prfx}\[${__ws}${__patch}.*\].*$"
+# Sed regexps matching m and n
+__series="^${__prfx}\[${__ws}${__patch}.*[[:blank:]]+${__num}\/{0,1}${__num}${__ws}\].*$"
+__mref="\2"
+__nref="\3"
+
+# Get "m" (patch's number in the series) from the subject
+# Usage: subject_m <subject>
+subject_m()
+{
+	local subj="$1"
+	printf "%s" "$subj" | LC_ALL=C sed -n -E "s/$__series/$__mref/p"
+}
+
+# Get "n" (count of patches in the series)  from the subject
+# Usage: subject_n <subject>
+subject_n()
+{
+	local subj="$1"
+	printf "%s" "$subj" | LC_ALL=C sed -n -E "s/$__series/$__nref/p"
+}
+
+# Check that the subject has the correct format
+# Usage: check_subject <subject>
+subject_check()
+{
+	[ -n "$(printf "%s" "$1" | LC_ALL=C sed -n -E "/$__single/ p")" ]
+}
+
+# Apply a patch. In case of error, print user-friendly diagnostic messages to
+# stdin.
+# Usage: apply_patch < <mbox_file>
+apply_patch()
+{
+	local am cmt
+
+	cmt="$(git rev-parse "HEAD^{commit}")"
+
+	am="$(git am 2>&1)" || {
+		cat <<EOF
+Failed to apply patch(es) with git am on top of:
+$(git log -1 --oneline "$cmt")
+
+$am
+
+Results of "patch -p1 < .git/rebase-apply/patch":
+
+$(patch -p1 < .git/rebase-apply/patch 2>&1)
+EOF
+		return 1
+	}
+}
+
+# A helper function for 'build_failure()'. This function expects the properly
+# formatted build log a stdin and outputs user-readable failure report to
+# stdout.
+__print_build_log()
+{
+	local config="$(leave_first "$1")";
+	local arch="$(leave_second "$1")"; shift
+	local commit_id="$1"; shift
+
+	cat <<EOF
+Failed to build the following commit for configuration "$config"${arch:+ "(architecture $arch)"}":
+
+$(git log -1 --oneline "$commit_id")
+
+$(cat)
+EOF
+}
+
+# Format a build failure report.
+# Usage: build_failure <defconfig> <commit_id> < <build_log>
+build_failure()
+{
+	# The build log might have been generated with multiple jobs which
+	# means it is probably messy and the error message is probably not at
+	# the very end. To make it more probable that we actually print the
+	# build error message within 24 lines we do the following:
+	# * filter sparse/smatch/cppcheck/coccinelle output
+	# * filter out 'CHECK   drivers/blah.c' Kbuild lines
+	# * print 24 lines preceding the 'make[]: *** [] blah' pattern which
+	#   make generates after an error
+
+	sed -n '# Filter out useless stuff
+		/\[sparse\]$/d
+	        /\[smatch\]$/d
+	        /\[cppcheck\]$/d
+	        /\[coccinelle\]$/d
+		/^  CHECK   /d
+		# Add the line to the hold buffer
+		H
+		# If the line is the error marker, print out the entire hold
+		# buffer and quit
+		/^make\[.*\]: \*\*\* \[.*\]/ { g; p; q; }
+		# Do the same if the last line is reached
+		$                            { g; p; q; }' | tail -n24 |
+		__print_build_log "$@"
+}
+
+# Check if the build failed.
+# Usage: build_failed <build_log>
+build_failed()
+{
+	local build_log="$1"
+	local failed
+
+	failed="$(tail -n1 -- "$build_log")"
+	test "$failed" = "FAILURE"
+}
+
+# Filter out the first element from a comma-separated list of elements.
+# Usage: strip_first <list>
+strip_first()
+{
+	printf "%s" "$1" | sed -e 's/^[^,]*,\{0,1\}//g'
+}
+
+# Filter out all but the first element from a comma-separated list of elements.
+# Usage: leave_first <list>
+leave_first()
+{
+	printf "%s" "$1" | sed -e 's/,.*$//g'
+}
+
+# Filter out all but the second element from a comma-separated list of elements.
+# Usage: leave_second <list>
+leave_second()
+{
+	leave_first "$(strip_first "$1")"
+}
+
+# Filter out all but the third element from a comma-separated list of elements.
+# Usage: leave_third <list>
+leave_third()
+{
+	leave_second "$(strip_first "$1")"
+}

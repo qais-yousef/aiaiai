@@ -1,0 +1,85 @@
+#!/bin/sh -euf
+
+# Copyright 2011-2012 Intel Corporation
+# Author: Alexander Shishkin, Artem Bityutskiy
+# License: GPLv2
+
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir:$srcdir/libshell:$PATH"
+
+. shell-error
+. shell-args
+. shell-quote
+
+PROG="${0##*/}"
+message_time="yes"
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] <file>
+
+Match various keywords - e.g., companies often prohibit some for whatever
+reasons. The keywords are read from stdin (one keyword per line) and matched
+against <file>.
+
+Options:
+  -v, --verbose          be verbose;
+  -h, --help             show this text and exit.
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+first_match=
+look_for_keyword()
+{
+	local kw="$1"
+	local match
+
+	verbose "look for keyword \"$kw\""
+
+	match="$(grep -i "$(quote_sed_regexp "$kw")" "$file" ||:)"
+	[ -n "$match" ] || return 0
+
+	[ -z "$first_match" ] || echo ""
+
+	first_match="no"
+	printf "%s\n\n" "Matched keyword \"$kw\""
+	printf "%s\n" "$match" | head -n8
+}
+
+TEMP=`getopt -n $PROG -o v,h --long verbose,help -- "$@"` || fail_usage ""
+eval set -- "$TEMP"
+
+mbox=
+verbose=
+
+while true; do
+	case "$1" in
+	-v|--verbose)
+		verbose=-v
+		;;
+	-h|--help)
+		show_usage
+		exit 0
+		;;
+	--) shift; break
+                ;;
+	*) fail_usage "Unrecognized option: $1"
+		;;
+	esac
+	shift
+done
+
+[ "$#" -eq 1 ] || fatal 'Please, specify exactly one argument - the file with keywords'
+file="$(readlink -ev -- "$1")"
+
+while IFS= read -r kw; do
+	look_for_keyword "$kw"
+done

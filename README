@@ -1,0 +1,385 @@
+1 Overview
+~~~~~~~~~~
+
+This is a set of scripts and tools for verifying Linux kernel patches.
+Most of the scripts accept "-h" or "--help" options, which you can use
+to get an idea what different scripts do.
+
+It is important to know that all the scripts are written so that:
+ * all the debugging and verbose (-v) cruft is printed to stderr
+ * all the user-friendly output is printed to stdout
+
+Thus, if you for example run "./test-patchset -v .... 2>log", then the
+"log" file will contain all the unreadable debugging cruft and the nice
+output will be visible on the console.
+
+Also it is useful to know that the scripts never modify the repositories
+you specify and the scripts remove all the temporary files upon exit,
+Ctrl-C interruption, or error (unless -p option is specified).
+
+Do not forget to compile the 'remap-log' and 'serialize-log' tools before using
+Aiaiai:
+$ make -C tools
+
+The layout of the repository.
+
+* aiaiai/email/
+    All the scripts related to emails handling. If you use Aiaiai locally
+    you do not need these scripts.
+* aiaiai/tools/
+    Some external tools and files which we use are stored here.
+* aiaiai/
+    The root repository directory contains the scripts which do all the
+    patch checking work. The central script is 'test-patchset' which
+    uses all the other scripts as helpers.
+
+Let's briefly review the contents of the repository.
+
+
+1.1 E-mail-related scripts
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* email/email-lda
+    This is Aiaiai's local delivery agent script which receives the incoming
+    emails from the mail server (via a pipe) and pipes them to the 'email-lda'
+    script.
+
+* email/email-dispatcher
+    This scrip waits for the incoming patch-sets in a directory and run
+    a user-defined command for every incoming patch-set. The role of this
+    script is to limit the amount of patch-sets we can run at a time. You
+    can configure this via command line options.
+
+    As it was already said, in our setup 'email-dispatcher' runs
+    'email-test-patchset'.
+
+* email/email-dispatcher-helper
+    This is a private helper script for 'email-dispatcher'
+
+* email/email-test-patchset
+    This script parses the incoming e-mail (in mbox format), finds out which
+    kernel tree has to be used, sends a notification to the sender, runs
+    the 'test-patchset' script with the right command-line arguments, and
+    sends the results of 'test-patchset' back to the patch submitter.
+
+* email/aiaiai.cfg
+    This is an example of 'email-test-patchset' configuration file. It
+    describes the projects Aiaiai supports and their parameters. Take a
+    look inside - the file is self-descriptive.
+
+To recap. When you send an e-mail to Aiaiai, the servers' MTA (postfix)
+pipes it to 'email-lda', which will first collects all the patches belonging to
+this patch-sets, and when it has all of them, it squashes them into one mbox
+file and moves it to the queue directory. This will wake up the
+'email-dispatcher' script, which will execute 'email-test-patchset' for this
+mbox (unless there are already too many jobs, in which case it will wait).
+
+The 'email-test-patchset' will parse the patch-set, find out which kernel
+it has to be tested against using the configuration file, send a notification
+e-mail to the patch sender, and execute the 'test-patchset' script.
+
+The 'test-patchset' script does all the testing work and outputs the
+test results to stdout. 'email-test-patchset' captures the output and
+sends it back to the patch submitter.
+
+
+1.2 Non-e-mail scripts
+~~~~~~~~~~~~~~~~~~~~~~
+
+* test-patchset
+    The central script which tests a patch-set is 'test-patchset'. You should
+    use it if you want to test your patches locally. It accepts patches in the
+    mbox format. You should specify various input parameters like the path to
+    the kernel to test against, the commit id to test against, which tests to
+    run, etc.
+
+* make-kernel
+    Low-level scripts which builds the kernel. It has several switches which
+    change its behavior, e.g., you can select whether you want to run
+    sparse/smatch/cppcheck/coccinelle tools or not.
+
+    'make-kernel' utilizes the 'tools/serialize-log' utility to make sure the
+    build logs of parallel builds are not scrambled and stay readable.
+
+* tools/serialize-log
+    This utility was inspired by Eric Melski's blog-post I found in the Internet.
+    We use this tool to make Linux kernel build logs saner than parallel build
+    produces (e.g., "make -j 20"). Indeed, parallel make scrambles all the
+    lines which makes build logs not comparable and not readable.
+
+    The idea is to run all make commands via the 'serialize-log' utility using
+    the GNU make 'SHELL' variable re-definition. 'serialize-log' intercepts the
+    stdout and stderr output of commands, gathers all the output until the
+    command finishes, and locks a common lockfile, and prints the intercepted
+    output. So the effect of this is that the in the build log the output of
+    one program goes as one big block and it is not mixed with the output of
+    another command.
+
+* check
+    A helper script for 'make-kernel' which runs
+    sparse/smatch/cppcheck/coccinelle tools. The reason we need it is because
+    the kernel build system allows only one checker at a time.
+
+* diff-logs
+    Compares 2 build logs and provides the differences. Very useful for finding
+    out which new warnings a patch introduced: build the kernel before the
+    patch, and after the patch, and then compare the build logs.
+
+    The diff-log uses the 'tools/remap-log' program to actually compare 2 build
+    logs.
+
+* tools/remap-log
+    This is a small C program originally written by Al Viro which helps
+    comparing 2 build logs by remapping line numbers. Roughly speaking,
+    'remap-log' takes the build log of the pre-patched kernel and the patch and
+    changes line numbers in the build log to match line numbers in the build
+    log of the patched kernel. For example, supposed that you have the
+    following warning in the pre-patched kernel:
+
+    driver.c:100 Unused variable 'ret'
+
+    and your patch adds a new include to the driver.c file, so the patched
+    kernel will produce the following warning:
+
+    driver.c:101 Unused variable 'ret'
+
+    Obviously, you do not want to bug the patch author about this warning
+    because it was not his patch which introduced it. And if you used a plain
+    diff, it would produce something like:
+
+    -driver.c:100 Unused variable 'ret'
+    +driver.c:101 Unused variable 'ret'
+
+    But we pass the build log for the pre-patched kernel via 'remap-log' and it
+    transforms that warning into
+
+    driver.c:101 Unused variable 'ret'
+
+    so the build logs of the pre-patched and patched kernels will contain the
+    same line and the diff won't show anything.
+
+* strip-log
+    A helper script which strips things like CRC and path prefixes in order to
+    prepare build logs to be compared with 'diff-logs'.
+
+* test-bisectability
+    Accepts a patch-set as the input and checks that the patch-set does not
+    break compilation at any step. This is achieved by applying every patch in
+    the series one-by-one, compiling the kernel and checking that compilation
+    was successful.
+
+* test-defconfigs
+    If the patch-set changes a defconfig, this script verifies that the
+    defconfig is changed properly ("make savedefconfig" was used).
+
+* clean-cmt-msg
+    A small helper script which may be used to clean-up the commit message
+    before applying a patch.
+
+* decode-rfc-2047
+    A small helper script which decodes unreadable patch subjects encoded with
+    RFC-2047 MIME encoding.
+
+* concat-mbox-files
+    A little helper script which concatenates multiple mbox files into one.
+
+To summarize:
+ * 'test-patchset' is the central script
+   * it runs 'checkpatch.pl'
+   * it runs 'test-bisectability'
+   * it runs 'test-defconfigs'
+   * for every configuration specified by the user, it builds the kernel
+     before and after the patch using the 'make-kernel' script, then
+     compares the build log using the 'diff-log' script.
+   * Things are done in parallel.
+   * The results of all tests are collected and printed to stdout
+   * The "verbose" contents is printed to stderr
+   * Many of the jobs above are run in parallel
+
+The 'diff-log' script which compares 2 logs, uses 'strip-log' to strip path
+prefixes and other things which may vary between builds. And it uses the
+'remap-log' tool for comparing 2 build logs the smart way.
+
+
+2 Using Aiaiai locally
+~~~~~~~~~~~~~~~~~~~~~~
+
+If you just want to test a patch-set locally, you should use the 'test-patchset'
+script. Do not forget to build the remap-log.c file in the 'tools'
+subdirectory.
+
+Here are some examples.
+
+1. Test a patch or a patch-set p.mbox against the linux-vfs kernel tree,
+   against the 'origin/next' branch, and use the 'i386_defconfig'
+   defconfig, the architecture is i386 (translates to 'make ARCH=i386'). Use
+   16 jobs.
+
+   cat p.mbox | ./test-patchset --bisectability --sparse --smatch --cppcheck \
+       --coccinelle -j 16 -c origin/next \
+       /<path>/linux-vfs i386_defconfig,i386
+
+2. Test a patch or a patch-set p.mbox against the linux-omap kernel tree,
+   against the master branch, use the 'omap2plus_defconfig' defconfig,
+   'arm' architecture and 'arm-eabi-' cross-compiler prefix (translates to
+   'make CROSS_COMPILE=arm-eabi-').
+
+   cat p.mbox | ./test-patchset --bisectability --sparse --smatch --cppcheck \
+       --coccinelle -j 16 -c master \
+       /<path>/linux-omap omap2plus_defconfig,arm,arm-eabi-
+
+3. If you are a maintainer you may want to test patches for more than one
+   architecture. You can do this - you'll just need to maintain defconfigs.
+   E.g., to test p.mbox against both i386_defconfig (Intel i386) and
+   omap2plus_defconfig (ARM-based SoC), you can run:
+
+   cat p.mbox | ./test-patchset --bisectability --sparse --smatch --cppcheck \
+       --coccinelle -j 16 -c master /<path>/linux-my \
+       i386_defconfig,i386 omap2plus_defconfig,arm,arm-eabi-
+
+   IOW, just specify defconfigs, architectures, and cross-compiler prefixes at
+   the end.
+
+Note, the 'test-patchset' script accepts one mbox file via stdio or the '-i'
+option. If you have several files belonging to one patch-set and you want to
+test them all, you need to concatenate them. Use the 'concat-mbox-files' script
+for this. E.g., if you have '01.mbox' and '02.mbox' comprising a patch-set,
+you can test do like this:
+
+$ concat-mbox-files 01.mbox 02.mbox | test-patchset ....
+
+Patches generated with 'git format-patch' are also mbox files so you can test
+them with 'test-patchset' as well. Just remember to use the '--thread' option
+to make 'git format-patch' generate "Message-Id:" and "In-Reply-To:" headers.
+For example:
+
+$ git format-patch --thread HEAD~10
+$ concat-mbox-files 00* | test-patchset ...
+
+I usually run 'test-patchset' with the lowest priority in order to make sure
+the machine is still usable for other things:
+
+$ nice -n19 ionice -c3 test-patchset ...
+
+And for the kernel trees I test frequently against, I usually have a helper
+script so that I do not have to type the 'test-patchset' options over and over
+again.
+
+
+3 Dependencies
+~~~~~~~~~~~~~~
+
+3.1 smatch
+~~~~~~~~~~
+
+Project homepage: http://smatch.sourceforge.net
+
+I do not think this tool is a part of Linux distributions. I found it very
+useful. To use it, you have to clone it, patch it, and install in your system.
+
+$ git://repo.or.cz/smatch.git
+$ cd smatch
+$ git am <path_to_aiaiai>/tools/0001-change-error-formatting-to-match-gcc.patch
+$ make PREFIX=/home/aiaiai/programs/smatch all install
+$ export PATH="$PATH:/home/aiaiai/programs/smatch/bin"
+
+These commands will install smatch to "/home/aiaiai/programs/smatch". Of
+course, you should specify your path and make sure smatch is in your "PATH"
+environment variable.
+
+
+3.2 sparse
+~~~~~~~~~~
+
+Similarly to smatch, you need to install it manually. This is what I did:
+
+$ git clone git://git.kernel.org/pub/scm/devel/sparse/sparse.git
+$ cd sparse
+$ make
+$ cp sparse /home/aiaiai/bin
+$ export PATH="/home/aiaiai/bin:$PATH"
+
+Note, sparse is also part of smatch, but I do not know the difference between
+sparse which come from smatch and just sparse. I use the latter one.
+
+
+3.3 coccinelle
+~~~~~~~~~~~~~~
+
+Coccinelle or "spatch" is a great semantic patch tool, very useful on its own.
+The Linux kernel contains a bunch of coccinelle semantic patches which catch
+various types of API abuses etc. We store a copy of these scripts in the
+"tools" subdirectory.
+
+The "spatch" tool is part of distributions like Debian and Fedora, so you most
+probably just need to install the corresponding package. The binary program is
+called "spatch".
+
+You may find a lot of information about this awesome tool by Googling.
+
+
+3.4 Dependencies
+~~~~~~~~~~~~~~~~
+
+The scripts use many external programs which are usually part of the Linux
+distribution. Here are they are, but the list is not complete - if you spot
+a missing dependency - please, let me know or send a patch against the README
+file.
+
+gcc
+make
+cppcheck
+formail
+perl
+python
+mutt
+sed
+grep
+awk
+git
+lockfile
+diff
+
+
+3.5 Code conventions
+~~~~~~~~~~~~~~~~~~~~
+
+The scripts have been written for the "dash" shell and they do not use
+any "bashizm" and should be very portable. Please, keep this in mind
+when changing them. The scripts try to follow a uniform coding style
+and conventions. Below are some of them.
+
+* Stdout is used only for user-friendly stuff. In many cases it is assumed that
+  the higher-level scripts just capture the stdout of lower-level scripts and
+  provide that to the user. For example, 'test-patchset' captures stdout of the
+  'test-bisectability' scripts and and uses it for reporting to the user. In
+  turn, the 'email-test-patchset' script captures stdout of the 'test-patchset'
+  script and sends it back to the user via e-mail.
+
+* Stderr is use for all the debugging, verbose and additional prints.
+
+* The scripts use the "-e" shell option and in case of any error (non-zero
+  return code from any program) we exit immediately. This allows us simplify
+  the scripts and avoid handling errors for all the commands which is very
+  convenient.
+
+  Well, the automatic exit does not work if the errorred command is in a
+  pipeline, and not the last. But this is not a big deal in most cases.
+
+  And sometimes we do not want the whole script to error out if a command
+  returns non zero (e.g., grep returns 1 if it did not match the pattern),
+  in which case we usually use "||:" after the command.
+
+* We use "-u" shell option to make sure our scripts are of good quality.
+
+* We try to be more secure and use the "-f" shell option whenever we can.
+
+* We make use of the external "libshell" library which is part of the Alt
+  Linux project and is extremely useful.
+
+* All the temporary files should be remover upon exit or interruption
+  (ctrl-C must be handled gracefully)
+
+* Users' git repository have to be treated as read-only and no modifications
+  should be made there. All the work has to be don in a clone of the original
+  repository.

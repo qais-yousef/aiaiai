@@ -1,0 +1,18 @@
+#!/usr/bin/perl
+
+# Copyright 2011-2012 Intel Corporation
+# Author: Artem Bityutskiy
+# License: GPLv2
+#
+# This is a small helper script which decodes headers if they are encoded using
+# the MIME format defined in RFC2047.
+
+use Encode qw/encode decode/;
+
+while (my $line = <>) {
+    chomp($line);
+    $line = decode('UTF-8', $line);
+    $line = decode('MIME-Header', $line);
+    $line = encode('UTF-8', $line);
+    print("$line\n");
+}

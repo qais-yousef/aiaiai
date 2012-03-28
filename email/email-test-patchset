@@ -1,0 +1,340 @@
+#!/bin/sh -efu
+
+# Copyright 2011-2012 Intel Corporation
+# Author: Artem Bityutskiy
+# License: GPLv2
+
+srcdir="$(readlink -ev -- ${0%/*}/..)"
+PATH="$srcdir:$srcdir/email:$srcdir/libshell:$PATH"
+
+. shell-error
+. shell-args
+. shell-signal
+. shell-ini-config
+. shell-quote
+. sh-functions
+
+PROG="${0##*/}"
+export message_time="yes"
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] <cfgfile.ini>
+
+The mbox file containing the patches to test is expected to come from stdin
+(unless --input option is specified).
+
+<cfgfile.ini>          - the configuration file.
+
+Options:
+  -i, --input=MBOX       use the MBOX file instead of stdin;
+  -p, --preserve         preserve all the temporary files - do not clean up;
+      --test-mode        test mode - work as usually, but do not actually
+                         send replies;
+      --bisectability    test bisectability;
+      --sparse           check with sparse while building;
+      --smatch           check with smatch while building;
+      --coccinelle       check with coccinlle;
+  -v, --verbose          be verbose;
+  -h, --help             show this text and exit.
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+preserve=
+verbose=
+mbox=
+tmpdir=
+cleanup_handler()
+{
+	rm $verbose -rf -- "$mbox" >&2
+
+	if [ -n "$preserve" ]; then
+		message "Preserved tmpdir: $tmpdir"
+	else
+		[ -z "$tmpdir" ] || verbose "Removing $tmpdir";
+		rm -rf -- "$tmpdir" >&2
+	fi
+}
+set_cleanup_handler cleanup_handler
+
+ini_config_get_or_die()
+{
+	local result
+	result="$(ini_config_get "$1" "$2" "$3")"
+	[ -n "$result" ] ||
+		fatal "Could not find config option \"$2.$3\" in \"$1\""
+	printf "%s" "$result"
+}
+
+# Send a reply to the author of the patch, the contents of the reply has to
+# come from stdin
+compose_email()
+{
+	cat > "$tmpdir/mail" <<EOF
+To: $from
+From: "$ownname" <$ownmail>
+Cc: $always_cc
+Cc: $to
+Cc: $cc
+Subject: Re: $subj
+In-Reply-To: $id
+Reply-To: "$adminname" <$adminmail>
+
+$preamble
+
+$(cat)
+
+--
+$signature
+EOF
+
+	[ -z "$verbose" ] || cat -- "$tmpdir/mail" >&2
+	[ -z "$test_mode" ] &&
+		mutt -x -H "$tmpdir/mail" </dev/null ||
+		verbose "Do not actually send the email - we are in test mode"
+}
+
+# List projects currently supported
+list_projects()
+{
+	local prj
+
+	LC_ALL=C sed -n -e "s/^\[prj_\(.*\)\]$/\1/p" "$cfgfile" | while read -r prj; do
+		prj_descr="$(ini_config_get_or_die "$cfgfile" "prj_$prj" "description")"
+		printf "* %s\n" "$ownmail_local+$prj@$ownmail_domain: $prj_descr"
+	done
+}
+
+# Strip an e-mail address from the comma-separated list of e-mail addresses
+# Usage: strip_address <list> <email>
+strip_address()
+{
+	local list="$1"
+
+	# Quote special sed symbols
+	quote_sed_regexp_variable ol "$ownmail_local"
+	quote_sed_regexp_variable od "$ownmail_domain"
+
+	printf "%s" "$list" | LC_ALL=C sed -e "s/[^,]*$ol+\{0,1\}[^@]*@$od[^,]*//g" \
+					   -e "s/,,/,/g" -e "s/^,//" -e "s/,$//"
+}
+
+# Fetch project name from the e-maal address. The project is specified like
+# this: local+project@domain
+# Usage: project_name <list>
+project_name()
+{
+	local list="$1"
+	local ol od
+
+	# Quote special sed symbols
+	quote_sed_regexp_variable ol "$ownmail_local"
+	quote_sed_regexp_variable od "$ownmail_domain"
+
+	printf "%s" "$list" | LC_ALL=C sed -n -e "s/.*$ol+\([^@]\+\)@$od.*/\1/p" | head -n1
+}
+
+TEMP=`getopt -n $PROG -o i:,p,v,h --long test-mode,input:,preserve,bisectability,sparse,smatch,coccinelle,verbose,help -- "$@"` ||
+	fail_usage ""
+eval set -- "$TEMP"
+
+mbox=
+test_mode=
+bisectability=
+sparse=
+smatch=
+coccinelle=
+
+while true; do
+	case "$1" in
+	-i|--input)
+		mbox="$(opt_check_read "$1" "$2")"
+		shift
+		;;
+	-p|--preserve)
+		preserve="--preserve"
+		;;
+	--test-mode)
+		test_mode=y
+		;;
+	--bisectability)
+		bisectability="--bisectability"
+		;;
+	--sparse)
+		sparse="--sparse"
+		;;
+	--smatch)
+		smatch="--smatch"
+		;;
+	--coccinelle)
+		coccinelle="--coccinelle"
+		;;
+	-v|--verbose) verbose=-v
+		;;
+	-h|--help)
+		show_usage
+		exit 0
+		;;
+	--) shift; break
+                ;;
+	*) fail_usage "Unrecognized option: $1"
+		;;
+	esac
+	shift
+done
+
+[ "$#" -eq 1 ] || fatal "Insufficient or too many arguments"
+
+cfgfile="$1"; shift
+
+# Save the mbox to a temporary file if it comes from stdin
+if [ -z "$mbox" ]; then
+	mbox="$(mktemp -t "$PROG.mbox.XXXX")"
+	cat > "$mbox"
+fi
+
+subj="$(fetch_header_or_die "Subject" < "$mbox")"
+from="$(fetch_header_or_die "From" < "$mbox")"
+id="$(fetch_header_or_die "Message-Id" < "$mbox")"
+msgname="$from: $subj (Message-Id: $id)"
+
+echo >&2
+message "Testing mbox: \"$msgname\""
+
+# Fetch global configuration options
+ownname="$(ini_config_get_or_die "$cfgfile" "global" "ownname")"
+ownmail="$(ini_config_get_or_die "$cfgfile" "global" "ownmail")"
+adminmail="$(ini_config_get_or_die "$cfgfile" "global" "adminmail")"
+adminname="$(ini_config_get_or_die "$cfgfile" "global" "adminname")"
+jobs="$(ini_config_get_or_die "$cfgfile" "global" "jobs")"
+workdir="$(ini_config_get_or_die "$cfgfile" "global" "workdir")"
+mkdir $verbose -p -- "$workdir" >&2
+
+tmpdir="$(mktemp --tmpdir="$workdir" -dt "$PROG.XXXX")"
+mv $verbose -- "$mbox" "$tmpdir/mbox" >&2
+mbox="$tmpdir/mbox"
+
+# Fetch e-mail configuration
+signature="$(ini_config_get_or_die "$cfgfile" "email" "signature")"
+preamble="$(ini_config_get_or_die "$cfgfile" "email" "preamble")"
+preamble="$(cat "$preamble")"
+
+# Separate out the local and domain parts of own e-mail address
+ownmail_local="$(printf "%s" "$ownmail"  | LC_ALL=C sed 's/@.*//g')"
+ownmail_domain="$(printf "%s" "$ownmail" | LC_ALL=C sed 's/.*@//g')"
+
+to="$(fetch_header "To" < "$mbox")"
+cc="$(fetch_header "Cc" < "$mbox")"
+
+# Either "To:" or "Cc:" must exist
+if [ -z "$to" ] && [ -z "$cc" ]; then
+       fatal "Neither \"To:\" nor \"Cc:\" header found"
+fi
+
+# Find out the project name
+prj="$(project_name "$to")"
+[ -n "$prj" ] || prj="$(project_name "$cc")"
+
+# Strip own address
+to=$(strip_address "$to")
+cc=$(strip_address "$cc")
+
+# Reject the e-mail if the project has not been specified
+if [ -z "$prj" ]; then
+	to=
+	cc=
+	always_cc=
+	compose_email <<EOF
+Sorry, but you have not specified the project name. Please, specify it
+using symbol "+" in the e-mail address of $ownname.
+
+List of projects $ownname supports:
+
+$(list_projects)
+
+If you have questions, please contact "$adminname" <$adminmail>.
+EOF
+	exit 0
+fi
+
+verbose "Project \"$prj\""
+
+# Check if we have this project in our config file
+prj_name="$(ini_config_get "$cfgfile" "prj_$prj" "name")"
+if [ -z "$prj_name" ]; then
+	to=
+	cc=
+	always_cc=
+	compose_email <<EOF
+Sorry, but project "$prj" is not supported. List of projects $ownname supports:
+
+$(list_projects)
+
+If you have questions, please contact "$adminname" <$adminmail>.
+EOF
+	exit 0
+fi
+
+# Fetch project-specific information
+prj_descr="$(ini_config_get_or_die "$cfgfile" "prj_$prj" "description")"
+defconfigs="$(ini_config_get_or_die "$cfgfile" "prj_$prj" "configs")"
+branch="$(ini_config_get_or_die "$cfgfile" "prj_$prj" "branch")"
+kernel_dir="$(ini_config_get_or_die "$cfgfile" "prj_$prj" "path")"
+always_cc="$(ini_config_get_or_die "$cfgfile" "prj_$prj" "always_cc")"
+reply_to_all="$(ini_config_get_or_die "$cfgfile" "prj_$prj" "reply_to_all")"
+accept_notify="$(ini_config_get_or_die "$cfgfile" "prj_$prj" "accept_notify")"
+keywords="$(ini_config_get "$cfgfile" ""prj_$prj"" "unwanted_keywords")"
+
+if [ "$reply_to_all" != "1" ]; then
+	to=
+	cc=
+fi
+
+# Notify the sender that the patches have been accepted
+if [ "$accept_notify" = "1" ]; then
+	message "Sending \"accepted\" e-mail"
+	compose_email <<EOF
+Your patch or patch-set:
+
+$(fetch_all_headers "Subject" < "$mbox" | sort)
+
+has been scheduled for testing.
+EOF
+fi
+
+# Test the path (or patch-set)
+message "Test configs \"$defconfigs\" branch \"$branch\" of \"$kernel_dir\""
+test-patchset $verbose $preserve $bisectability $sparse $smatch $coccinelle \
+	-i "$mbox" -j "$jobs" -c "$branch" -w "$tmpdir" \
+	${keywords:+-K "$keywords"} -- \
+	"$kernel_dir" "$defconfigs" > "$tmpdir/test-patchset.log" ||
+{
+	message "test-patchset failed"
+	compose_email <<EOF
+Sorry, but an internal error happened. Please, send a bug report to
+"$adminname" <$adminmail>.
+EOF
+	exit 0
+}
+
+message "Test is finished, sending back the results"
+
+compose_email <<EOF
+$(ini_config_get_or_die "$cfgfile" "email" "built_preamble"):
+
+$(fetch_all_headers "Subject" < "$mbox" | sort)
+
+Project: $prj_name ($prj_descr)
+
+Configurations: $defconfigs
+
+$(cat -- $tmpdir/test-patchset.log)
+EOF

@@ -1,0 +1,420 @@
+#!/bin/sh -efu
+
+# Copyright 2011-2012 Intel Corporation
+# Author: Artem Bityutskiy
+# License: GPLv2
+
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir:$srcdir/libshell:$srcdir/tools:$PATH"
+
+. shell-error
+. shell-args
+. shell-signal
+. sh-functions
+
+PROG="${0##*/}"
+message_time="yes"
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] <kernel-tree> <defconfig,[arch[,cross]] ...>
+
+<kernel-tree>                   - directory with kernel sources
+<defconfig,[arch[,cross]] ...>  - list of configurations to test.
+
+The mbox file containing the patches to test is expected to come from stdin or
+-i option can be used instead.
+
+The configurations are specified as follows:
+
+  defconfig[,arch[,cross]]
+
+where
+
+  * "defconfig" is the name kernel defconfig file to test
+  * "arch" is the architecture (translates to Kbuild's ARCH variable value)
+  * "cross" is the cross-compiler prefix (translates to Kbuild's CROSS_COMPILE
+     variable value).
+
+For example, the following list of configurations:
+
+  omap2_defconfig,arm,arm-eabi- i386_defconfig,i386 defconfig,s390,s390x-linux-
+
+will make $PROG to test the patch in 3 configurations:
+
+  1. defconfig "omap2_defconfig" with ARCH=arm and CROSS_COMPILE=arm-eabi-
+  2. defconfig "i386_defconfig" with ARCH=arm and the default CROSS_COMPILE
+  3. defconfig "defconfig" with ARCH=s390 and CROSS_COMPILE=s390x-linux-
+
+Options:
+  -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
+  -c, --commit-id=ID     the commit id to test against (default is the head of
+                         the git tree (HEAD));
+  -i, --input=MBOX       use the MBOX file instead of stdin;
+  -w, --workdir=WDIR     path to the working directory where the kernel will
+                         be built (default: a temporary directory is created
+                         using mktemp);
+  -p, --preserve         preserve all the temporary files - do not clean up;
+      --bisectability    test bisectability;
+      --sparse           check with sparse while building;
+      --smatch           check with smatch while building;
+      --cppcheck         check with cppcheck while building;
+      --coccinelle       check with coccinelle (spatch) while building;
+  -K  --keywords=FILE    match keywords from FILE against the patch
+  -v, --verbose          be verbose;
+  -h, --help             show this text and exit.
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+# Print a separator line to stdout (to separate different parts of the test
+# result)
+print_separator()
+{
+	local i=0
+
+	echo
+	while [ $i -lt 80 ]; do
+		i=$(($i+1));
+		printf "-";
+	done
+	echo
+}
+
+test_checkpatch()
+{
+	local n=0 patch_cnt
+	local tmp_out="$tmpdir/checkpatch.tmp_out"
+	local tmp_mbox="$tmpdir/checkpatch.tmp_mbox"
+	local opts="--no-tree -q --show-types --ignore PREFER_PACKED,PREFER_ALIGNED"
+
+	patch_cnt="$(formail -s echo 1 < "$mbox" | wc -l)"
+
+	# Iterate over all patches and check each one individually
+	while [ "$n" -lt "$patch_cnt" ]; do
+		local subj
+
+		formail +$n -1 -s < "$mbox" > "$tmp_mbox"
+		truncate -s0 "$tmp_out"
+		checkpatch.pl $opts - < "$tmp_mbox" > "$tmp_out" ||:
+		n="$(($n+1))"
+
+		[ -s "$tmp_out" ] || continue
+
+		subj="$(fetch_header_or_die "Subject" < "$tmp_mbox")"
+		print_separator >> "$tmpdir/checkpatch.results"
+		printf "\n%s\n\n" "checkpatch.pl results for patch \"$subj\"" \
+			>> "$tmpdir/checkpatch.results"
+		cat < "$tmp_out" >> "$tmpdir/checkpatch.results"
+	done
+
+	# Check the squashed patch
+	truncate -s0 "$tmp_out"
+	checkpatch.pl $opts - < "$mbox" > "$tmp_out" ||:
+	[ -s "$tmp_out" ] || return 0
+
+	print_separator >> "$tmpdir/checkpatch.results"
+
+	if [ "$patch_cnt" -gt 1 ]; then
+		printf "\n%s\n\n" "checkpatch.pl results for the entire squashed patch-set" \
+			>> "$tmpdir/checkpatch.results"
+	fi
+
+	cat < "$tmp_out" >> "$tmpdir/checkpatch.results"
+}
+
+pid_bisect=
+test_configuration()
+{
+	local config="$1"
+	local defconfig="$(leave_first "$1")";
+	local arch="$(leave_second "$1")";
+	local cross="$(leave_third "$1")";
+	local arch_opt=
+
+	[ -z "$arch" ] || arch_opt="-a $arch${cross:+",$cross"}"
+
+	if [ -n "$bisectability" ]; then
+		# We share the same source tree with 'test-bisectability', so
+		# wait for it (it could be run at the previous iteration)
+		if [ -n "$pid_bisect" ]; then
+			wait "$pid_bisect" || fatal "test-bisectability failed"
+			pid_bisect=
+		fi
+
+		# Clean-up the git tree after the test
+		rm $verbose -rf "$cloned_kernel1/.git/rebase-apply" >&2
+		git --git-dir="$cloned_kernel1/.git" reset $quiet --hard "$commit_id1" >&2
+	fi
+
+	verbose "Build non-patched kernel (\"$cloned_kernel1\", configuration \"$config\")"
+
+	local log1="$tmpdir1/$config"
+	local obj1="$tmpdir1/obj.$config"
+
+	make-kernel $verbose $sparse $smatch $cppcheck $coccinelle -o "$obj1" \
+		--check-only "$mod_files" -j "$jobs" $arch_opt \
+		-O "$log1.stdout.log" -E "$log1.stderr.log" \
+		-- "$cloned_kernel1" "$defconfig" all
+
+	verbose "Done with non-patched kernel"
+
+	# Run the bisectability test, re-use our kernel sources and built
+	# objects.
+	if [ -n "$bisectability" ]; then
+		test-bisectability $verbose $preserve -j "$jobs" -c "$commit_id1" \
+			--dont-clone -i "$mbox" -w "$tmpdir" -o "$obj1" -- \
+			"$cloned_kernel1" "$config" > "$tmpdir/$config.bisect.results" &
+		pid_bisect="$!"
+	fi
+
+	verbose "Build patched kernel (\"$cloned_kernel2\", configuration \"$config\")"
+
+	local log2="$tmpdir2/$config"
+	local obj2="$tmpdir2/obj.$config"
+
+	make-kernel $verbose $sparse $smatch $cppcheck $coccinelle -o "$obj2" \
+		--check-only "$mod_files" -j "$jobs" $arch_opt \
+		-O "$log2.stdout.log" -E "$log2.stderr.log" \
+		-- "$cloned_kernel2" "$defconfig" all
+
+	verbose "Done with patched kernel"
+
+	diff-log $verbose $preserve "$tmpdir/diff-for-diff-log" "$log1.stderr.log" \
+		-w "$tmpdir" "$log2.stderr.log" > "$tmpdir/$config.stderr.diff"
+}
+
+tmpdir=
+preserve=
+cleanup_handler()
+{
+	if [ -n "$preserve" ]; then
+		message "Preserved tmpdir: $tmpdir"
+	else
+		[ -z "$tmpdir" ] || verbose "Removing $tmpdir";
+		rm -rf -- "$tmpdir" >&2
+	fi
+
+	# Just in case we were interrupted, kill all our children
+	local child
+        for child in $(ps -o pid --no-headers --ppid "$$"); do
+		kill "$child" > /dev/null 2>&1 ||:
+        done
+}
+set_cleanup_handler cleanup_handler
+
+TEMP=`getopt -n $PROG -o j:,c:,i:,w:,p,K:,v,h --long jobs:,commit-id:,input:,workdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,keywords:,verbose,help -- "$@"` ||
+	fail_usage ""
+eval set -- "$TEMP"
+
+jobs=1
+commit_id1=HEAD
+mbox=
+bisectability=
+sparse=
+smatch=
+cppcheck=
+coccinelle=
+keywords=
+verbose=
+quiet="-q"
+
+while true; do
+	case "$1" in
+	-j|--jobs)
+		jobs=$(opt_check_number "$1" "$2")
+		shift
+		;;
+	-c|--commit-id)
+		commit_id1="$2"
+		shift
+		;;
+	-i|--input)
+		mbox="$(opt_check_read "$1" "$2")"
+		shift
+		;;
+	-w|--workdir)
+		mkdir $verbose -p -- "$2" >&2
+		tmpdir="$(mktemp --tmpdir="$(readlink -fv -- "$2")" -dt "$PROG.XXXX")"
+		shift
+		;;
+	-p|--preserve)
+		preserve="--preserve"
+		;;
+	--bisectability)
+		bisectability="--bisectability"
+		;;
+	--sparse)
+		sparse="--sparse"
+		;;
+	--smatch)
+		smatch="--smatch"
+		;;
+	--cppcheck)
+		cppcheck="--cppcheck"
+		;;
+	--coccinelle)
+		coccinelle="--coccinelle"
+		;;
+	-K|--keywords)
+		keywords="$(opt_check_read "$1" "$2")"
+		shift
+		;;
+	-v|--verbose)
+		verbose=-v
+		quiet=
+		;;
+	-h|--help)
+		show_usage
+		exit 0
+		;;
+	--) shift; break
+                ;;
+	*) fail_usage "Unrecognized option: $1"
+		;;
+	esac
+	shift
+done
+
+[ "$#" -ge 2 ] || fatal 'Insufficient arguments'
+
+kernel_tree="$(readlink -ev -- "$1")"; shift
+defconfigs="$@"
+
+[ -n "$tmpdir" ] || tmpdir="$(mktemp -dt "$PROG.XXXX")"
+tmpdir1="$tmpdir/before"
+tmpdir2="$tmpdir/after"
+mkdir -p $verbose "$tmpdir1" "$tmpdir2" >&2
+
+# Save the mbox to a temporary file if it comes from stdin
+if [ -z "$mbox" ]; then
+	mbox="$tmpdir/mbox"
+	cat > "$mbox"
+else
+	cp $verbose "$mbox" "$tmpdir/mbox" >&2
+	mbox="$tmpdir/mbox"
+fi
+
+cloned_kernel2="$tmpdir2/src"
+git clone "${verbose:--q}" "$kernel_tree" "$cloned_kernel2" >&2
+cd "$cloned_kernel2"
+
+# Reset to the base commit id
+commit_id1="$(git --git-dir="$kernel_tree/.git" rev-parse "$commit_id1^{commit}")"
+verbose "Base commit: $(git log -1 --oneline "$commit_id1")"
+git reset $quiet --hard "$commit_id1" >&2
+
+# Apply the patch
+apply_patch < "$mbox" || exit 0
+
+commit_id2="$(git rev-parse "HEAD^{commit}")"
+verbose "Commit after applying the patch(es): $(git log -1 --oneline "$commit_id2")"
+
+# Re-generate the patch. Note, we prefer to not use the input mbox directly
+# because it may be encoded (e.g., with quoted-printable).
+#
+git format-patch -M --patience --stdout "$commit_id1".."$commit_id2" > "$mbox"
+
+# Generate a diff for diff-log
+git diff -U0 -M "$commit_id1".."$commit_id2" > "$tmpdir/diff-for-diff-log"
+
+# Generate a diff for checkpatch.pl
+git diff -M "$commit_id1".."$commit_id2" > "$tmpdir/diff-for-checkpatch"
+
+# Run checkpatch.pl in backgound.
+test_checkpatch &
+pid_checkpatch="$!"
+
+# Search for keywords
+if [ -n "$keywords" ]; then
+	match-keywords $verbose "$mbox" < "$keywords" > "$tmpdir/keywords.results" &
+	pid_keywords="$!"
+fi
+
+# Generate the list of modified files
+mod_files="$tmpdir/mod_files"
+git diff --numstat $commit_id1..$commit_id2 |
+	sed -e 's/[[:digit:][:space:]]\+//' > "$mod_files"
+
+# Clone another copy of the kernel tree
+cloned_kernel1="$tmpdir1/src"
+git clone "${verbose:--q}" "$cloned_kernel2" "$cloned_kernel1" >&2
+cd "$cloned_kernel1"
+git reset $quiet --hard "$commit_id1" >&2
+
+# Main loop for testing all configurations
+for defconfig in $defconfigs; do
+	test_configuration "$defconfig"
+done
+
+# Check defconfigs - use the second copy of the kernel because the first one is
+# used by 'test-bisectability'.
+test-defconfigs $verbose $preserve -c "$commit_id1" -i "$mbox" -w "$tmpdir" \
+	--dont-clone "$cloned_kernel2" > "$tmpdir/test-defconfigs.results"
+
+wait "$pid_checkpatch" || fatal "checkpatch failed"
+[ -z "$keywords" ]     || wait "$pid_keywords" || fatal "match-keywords failed"
+[ -z "$pid_bisect" ]   || wait "$pid_bisect"   || fatal "test-bisectability failed"
+
+# Print the results
+
+echo "Tested the patch(es) on top of the following commit:"
+git --no-pager log -1 "$commit_id1"
+
+for defconfig in $defconfigs; do
+	log1="$tmpdir1/$defconfig.stderr.log"
+	log2="$tmpdir2/$defconfig.stderr.log"
+
+	print_separator
+
+	# Make kernel appends a "FAILURE" string at the end when builds fail
+	if build_failed "$log1"; then
+		build_failure "$defconfig" "$commit_id1" < "$log1"
+		continue
+	fi
+
+	if build_failed "$log2"; then
+		build_failure "$defconfig" "$commit_id2" < "$log2"
+		continue
+	fi
+
+	if [ -n "$bisectability" ] && [ -s "$tmpdir/$defconfig.bisect.results" ]; then
+		printf "\n%s\n\n" "Bisectability test results for configuration \"$defconfig\""
+		cat "$tmpdir/$defconfig.bisect.results"
+		print_separator
+	fi
+
+	if [ -s "$tmpdir/$defconfig.stderr.diff" ]; then
+		printf "\n%s\n\n" "Successfully built configuration \"$defconfig\", results:"
+		cat "$tmpdir/$defconfig.stderr.diff"
+	else
+		printf "\n%s\n" "Successfully built configuration \"$defconfig\", no issues"
+	fi
+done;
+
+if [ -s "$tmpdir/test-defconfigs.results" ]; then
+	print_separator
+	printf "\n%s\n\n" "Defconfig issues detected:"
+	cat "$tmpdir/test-defconfigs.results"
+fi
+
+if [ -s "$tmpdir/keywords.results" ]; then
+	print_separator
+	printf "\n%s\n\n" "Your patch contains unwanted keywords:"
+	cat "$tmpdir/keywords.results"
+fi
+
+if [ -s "$tmpdir/checkpatch.results" ]; then
+	print_separator
+	printf "\n%s\n" "checkpatch.pl has some complaints:"
+	cat "$tmpdir/checkpatch.results"
+fi
+
+print_separator

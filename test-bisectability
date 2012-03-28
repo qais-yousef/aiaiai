@@ -1,0 +1,220 @@
+#!/bin/sh -efu
+
+# Copyright 2011-2012 Intel Corporation
+# Author: Artem Bityutskiy
+# License: GPLv2
+
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir:$srcdir/libshell:$srcdir/tools:$PATH"
+
+. shell-error
+. shell-args
+. shell-signal
+. sh-functions
+
+PROG="${0##*/}"
+message_time="yes"
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] <kernel-tree> <defconfig[,arch[,cross]]>
+
+<kernel-tree>               - directory with kernel sources
+<defconfig[,arch[,cross]]>  - the configuration to test.
+
+The mbox file containing the patches to test is expected to come from stdin or
+-i option can be used instead.
+
+The configuration is specified as follows:
+
+  defconfig[,arch[,cross]]
+
+where
+
+  * "defconfig" is the name kernel defconfig file to test
+  * "arch" is the architecture (translates to Kbuild's ARCH variable value)
+  * "cross" is the cross-compiler prefix (translates to Kbuild's CROSS_COMPILE
+     variable value).
+
+For example:
+
+  omap2plus_defconfig,arm,arm-eabi-
+
+means testing with defconfig "omap2plus_defconfig", ARCH=arm and
+CROSS_COMPILE=arm-eabi-.
+
+Options:
+  -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
+  -c, --commit-id=ID     the commit id to test against (default is the head of
+                         the git tree (HEAD));
+  -d, --dont-clone       work directly in <kernel-tree>, do not clone a
+                         temporary copy of <kernel-tree>;
+  -o, --objdir=OBJDIR    locate all output files in OBJDIR, including .config
+                         (O=OBJDIR Kbuild feature); if undefined - a temporary
+                         directory is created using mktemp);
+  -i, --input=MBOX       use the MBOX file instead of stdin;
+  -w, --workdir=WDIR     path to the working directory where the kernel will;
+                         be built (default: a temporary directory is created
+                         using mktemp);
+  -p, --preserve         preserve all the temporary files - do not clean up;
+  -v, --verbose          be verbose;
+  -h, --help             show this text and exit.
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+compile_test()
+{
+	local file="$1"; shift
+	local subj="$(fetch_header_or_die "Subject" < "$file")"
+
+	verbose "Compiling \"$subj\""
+
+	# Apply the patch
+	apply_patch < "$file" || exit 0
+
+	make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt \
+		-O "$tmpdir/$defconfig.stdout.log" -E "$tmpdir/$defconfig.stderr.log" \
+		-- "$cloned_kernel" "$defconfig" all
+	failed="$(tail -n1 -- "$tmpdir/$defconfig.stderr.log")"
+	if [ "$failed" = "FAILURE" ]; then
+		# Failed to build the base commit, report and exit
+		build_failure "$defconfig" "HEAD" < "$tmpdir/$defconfig.stderr.log"
+		exit 0
+	fi
+}
+
+tmpdir=
+preserve=
+cleanup_handler()
+{
+	if [ -n "$preserve" ]; then
+		message "Preserved tmpdir: $tmpdir"
+	else
+		[ -z "$tmpdir" ] || verbose "Removing $tmpdir";
+		rm -rf -- "$tmpdir" >&2
+	fi
+}
+set_cleanup_handler cleanup_handler
+
+TEMP=`getopt -n $PROG -o j:,c:,d,o:,i:,w:,p,v,h --long jobs:,commit-id:,dont-clone,objdir:,input:,workdir:,preserve,verbose,help -- "$@"` ||
+	fail_usage ""
+eval set -- "$TEMP"
+
+jobs=1
+commit_id=HEAD
+dont_clone=
+objdir=
+mbox=
+verbose=
+quiet="-q"
+
+while true; do
+	case "$1" in
+	-j|--jobs)
+		jobs=$(opt_check_number "$1" "$2")
+		shift
+		;;
+	-c|--commit-id)
+		commit_id="$2"
+		shift
+		;;
+	-d|--dont-clone)
+		dont_clone="--dont-clone"
+		;;
+	-o|--objdir)
+		objdir="$(readlink -fv -- "$2")"
+		shift
+		;;
+	-i|--input)
+		mbox="$(opt_check_read "$1" "$2")"
+		shift
+		;;
+	-w|--workdir)
+		mkdir $verbose -p -- "$2" >&2
+		tmpdir="$(mktemp --tmpdir="$(readlink -fv -- "$2")" -dt "$PROG.XXXX")"
+		shift
+		;;
+	-p|--preserve)
+		preserve="--preserve"
+		;;
+	-v|--verbose)
+		verbose=-v
+		quiet=
+		;;
+	-h|--help)
+		show_usage
+		exit 0
+		;;
+	--) shift; break
+                ;;
+	*) fail_usage "Unrecognized option: $1"
+		;;
+	esac
+	shift
+done
+
+[ "$#" -eq 2 ] || fatal 'Please, specify exactly 2 arguments - the kernel tree and the configuration'
+
+kernel_tree="$(readlink -ev -- "$1")"; shift
+defconfig="$(leave_first "$1")";
+arch="$(leave_second "$1")";
+cross="$(leave_third "$1")";
+arch_opt=
+
+[ -z "$arch" ] || arch_opt="-a $arch${cross:+",$cross"}"
+
+[ -n "$tmpdir" ] || tmpdir="$(mktemp -dt "$PROG.XXXX")"
+tmp_mbox="$tmpdir/tmp_mbox"
+[ -n "$objdir" ] || objdir="$tmpdir/obj.$defconfig"
+
+# Save the mbox to a temporary file if it comes from stdin
+if [ -z "$mbox" ]; then
+	mbox="$tmpdir/mbox"
+	cat > "$mbox"
+fi
+
+patch_cnt="$(formail -s echo 1 < "$mbox" | wc -l)"
+if [ "$patch_cnt" -le 1 ]; then
+	verbose "Only one patch, nothing to test"
+	exit 0;
+fi
+
+verbose "Bisecting $patch_cnt patches for cofiguration \"$defconfig\""
+
+if [ -z "$dont_clone" ]; then
+	cloned_kernel="$tmpdir/src"
+	git clone "${verbose:--q}" "$kernel_tree" "$cloned_kernel" >&2
+else
+	cloned_kernel="$kernel_tree"
+fi
+
+cd "$cloned_kernel"
+commit_id="$(git --git-dir="$kernel_tree/.git" rev-parse "$commit_id^{commit}")"
+git reset $quiet --hard "$commit_id" >&2
+
+verbose "Building the base tree"
+make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt \
+	-O "$tmpdir/$defconfig.stdout.log" -E "$tmpdir/$defconfig.stderr.log" \
+	-- "$cloned_kernel" "$defconfig" all
+if build_failed "$tmpdir/$defconfig.stderr.log"; then
+	# Failed to build the base commit, report and exit
+	build_failure "$defconfig" "$commit_id" < "$tmpdir/$defconfig.stderr.log"
+	exit 0
+fi
+
+n=0
+while [ "$n" -lt "$patch_cnt" ]; do
+	formail +$n -1 -s < "$mbox" > "$tmp_mbox"
+	compile_test "$tmp_mbox"
+	n="$(($n+1))"
+done
+
+echo "Bisecability test passed"

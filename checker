@@ -1,0 +1,204 @@
+#!/bin/sh -efu
+
+# Copyright 2011-2012 Intel Corporation
+# Author: Artem Bityutskiy
+# License: GPLv2
+
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir:$srcdir/libshell:$srcdir/tools:$PATH"
+
+. shell-error
+. shell-args
+. shell-signal
+. shell-quote
+
+PROG="${0##*/}"
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] -- ...
+
+This program runs various checkers when building the kernel. Options for
+$PROG has to go first, then there has to be a "--" delimiter, and then any
+number of options which are not interpreted by this script but passed
+further to the checker (sparse or smatch).
+
+Options:
+      --sparse           check with sparse;
+      --smatch           check with smatch;
+      --cppcheck         check with cppcheck;
+      --coccinelle       check with coccinelle (spatch);
+      --check-only=FILE  check only files listed in FILE;
+  -h, --help             show this text and exit.
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+# Fetch the file name to check from the input arguments.
+get_file_to_check()
+{
+	# The file name is the last argument
+	for file; do true; done
+	echo "$file"
+}
+
+# Check the file against all the coccinelle scripts we have
+run_coccinelle()
+{
+	local spatch spatches flags pid
+	local pids=
+
+	spatches="$(find $srcdir -name '*.cocci')"
+	for spatch in $spatches; do
+		# Coccinelle is not stable enought so far and dies because of
+		# internal issues sometimes or just never stops. So we specify
+		# a timeout as well as ignore its error code.
+		flags="-D report -no_show_diff -very_quiet -no_includes -include_headers -timeout 60"
+
+		# Run coccinelle for each semantic patch in parallel. This may load the
+		# system too heavily, though. We use serialize-log to make sure
+		# we have non-scrambled output.
+		serialize-log -s -l "$tmpdir/lockfile" -c \
+			"spatch $flags -sp_file $spatch $file_to_check" ||: &
+		pids="$pids $!"
+	done
+
+	for pid in $pids; do
+		wait "$pid"
+	done
+}
+
+tmpdir=
+cleanup_handler()
+{
+	rm -rf $verbose -- "$tmpdir"
+
+	# Just in case we were interrupted, kill all our children
+	local child
+        for child in $(ps -o pid --no-headers --ppid "$$"); do
+		kill "$child" > /dev/null 2>&1 ||:
+        done
+}
+set_cleanup_handler cleanup_handler
+
+TEMP=`getopt -n $PROG -o h --long sparse,smatch,cppcheck,coccinelle,check-only:,help -- "$@"` ||
+	fail_usage ""
+eval set -- "$TEMP"
+
+[ "$#" -gt "0" ] || exit 0
+
+run_sparse=
+run_smatch=
+run_cppcheck=
+run_coccinelle=
+check_only=
+
+while true; do
+	case "$1" in
+	--sparse)
+		run_sparse=1
+		;;
+	--smatch)
+		run_smatch=1
+		;;
+	--cppcheck)
+		run_cppcheck=1
+		;;
+	--coccinelle)
+		run_coccinelle=1
+		;;
+	--check-only)
+		check_only="$(opt_check_read "$1" "$2")"
+		shift
+		;;
+	-h|--help)
+		show_usage
+		exit 0
+		;;
+	--) shift; break
+		;;
+	*) fail_usage "Unrecognized option: $1"
+		;;
+	esac
+	shift
+done
+
+tmpdir="$(mktemp -dt "$PROG.XXXX")"
+file_to_check="$(get_file_to_check "$@")"
+
+# Exit immediately if there is nothing to check
+if [ -z "$run_sparse" ] && [ -z "$run_smatch" ] && [ -z "$run_cppcheck" ] &&
+   [ -z "$run_coccinelle" ]; then
+	exit 0
+fi
+
+if [ -n "$check_only" ]; then
+	match=
+	files="$(cat "$check_only")"
+	for file in $files; do
+		match="$(printf "%s" "$@" | sed -n "/$(quote_sed_regexp "$file")/p")"
+		[ -z "$match" ] || break
+	done
+
+	[ -n "$match" ] || exit 0
+fi
+
+# Run all the tools in background
+
+if [ -n "$run_sparse" ]; then
+	# Sparse uses stderr for check resuts, not sure about stdout
+	sparse "$@" > "$tmpdir/sparse" 2>&1 &
+	pid_sparse="$!"
+fi
+if [ -n "$run_smatch" ]; then
+	# Smatch uses stderr for reporting about internal issues and stdout for
+	# check results
+	smatch "$@" > "$tmpdir/smatch" 2>/dev/null &
+	pid_smatch="$!"
+fi
+if [ -n "$run_cppcheck" ]; then
+	# Cppcheck uses stderr for reporting about internal issues and stdout for
+	# check results
+	cppcheck -f -q --template=gcc "$file_to_check" > "$tmpdir/cppcheck" 2>/dev/null &
+	pid_cppcheck="$!"
+fi
+if [ -n "$run_coccinelle" ]; then
+	# Coccinelle uses stderr for reporting about internal issues and stdout for
+	# check results
+	run_coccinelle > "$tmpdir/coccinelle" 2>/dev/null &
+	pid_coccinelle="$!"
+fi
+
+# Wait for the tools
+
+if [ -n "$run_sparse" ]; then
+	wait "$pid_sparse"
+	if [ -s "$tmpdir/sparse" ]; then
+		cat "$tmpdir/sparse" | sed -e "s/$/ [sparse]/" 1>&2
+	fi
+fi
+if [ -n "$run_smatch" ]; then
+	wait "$pid_smatch"
+	if [ -s "$tmpdir/smatch" ]; then
+		cat "$tmpdir/smatch" | sed -e "s/$/ [smatch]/" 1>&2
+	fi
+fi
+if [ -n "$run_cppcheck" ]; then
+	wait "$pid_cppcheck"
+	if [ -s "$tmpdir/cppcheck" ]; then
+		cat "$tmpdir/cppcheck" | sed -e "s/$/ [cppcheck]/" 1>&2
+	fi
+fi
+if [ -n "$run_coccinelle" ]; then
+	wait "$pid_coccinelle"
+	if [ -s "$tmpdir/coccinelle" ]; then
+		cat "$tmpdir/coccinelle" | sed -e "s/$/ [coccinelle]/" 1>&2
+	fi
+fi

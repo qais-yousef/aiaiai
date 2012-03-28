@@ -1,0 +1,237 @@
+#!/bin/sh -efu
+
+# Copyright 2011-2012 Intel Corporation
+# Author: Kirill Shutemov, Artem Bityutskiy
+# License: GPLv2
+
+srcdir="$(readlink -ev -- ${0%/*})"
+export PATH="$srcdir:$srcdir/libshell:$srcdir/tools:$PATH"
+
+. shell-error
+. shell-args
+. shell-signal
+. shell-quote
+. sh-functions
+
+PROG="${0##*/}"
+message_time="yes"
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] <kernel-tree> <targets...>
+
+<kernel-tree>          - directory with kernel sources
+<targets...>           - list of targets to make.
+
+Options:
+  -o, --objdir=OBJDIR    locate all output files in OBJDIR, including .config
+                         (O=OBJDIR Kbuild feature); if undefined - use the
+			 source directory (<kernel-tree>);
+  -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
+  -O, --stdout=FILE      redirect stdout of the build to FILE;
+  -E, --stderr=FILE      redirect stderr of the build to FILE (note, if neither
+                         -O nor -E are specified, everything is redirected to
+			 stdout);
+  -k, --keep-going       continue as much as possible after an error (see
+                         -k GNU make option);
+  -a, --arch=A,[C]       test for specified architecture (ARCH=) and the
+                         cross-compiler prefix (CROSS_COMPILE=); Examples:
+                         -a i386, -a arm,arm-eabi-, etc;
+      --sparse           check with sparse while building;
+      --smatch           check with smatch while building;
+      --cppcheck         check with cppcheck while building;
+      --coccinelle       check with coccinelle (spatch) while building;
+      --check-only=FILE  check only files listed in FILE;
+  -v, --verbose          be verbose;
+  -h, --help             show this text and exit.
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+# Strip useless stuff from the log and make it possible to compare it to
+# another build log.
+strip_log()
+{
+	local logfile="$1"
+
+	sed -i -e "# Strip useless stuff
+		   /^CRC [[:xdigit:]]\+$/d
+		   /^System is [[:digit:]]\+ kB$/d
+		   /^Setup is [[:digit:]]\+ bytes (padded to [[:digit:]]\+ bytes).$/d
+		   /^Root device is ([[:digit:]]\+, [[:digit:]]\+)$/d
+
+		   # Strip not very useful messages from modpost
+		   /^To see full details build your kernel with:$/d
+		   /^'make CONFIG_DEBUG_SECTION_MISMATCH=y'$/d
+
+		   # Make all source paths relative to the kernel tree root
+		   s/$(quote_sed_regexp "$kernel_tree/")//g" "$logfile"
+
+	# Strip objdir paths as well
+	[ -z "$objdir" ] || sed -i -e "s/$(quote_sed_regexp "$objdir/")//g" "$logfile"
+}
+
+make_target()
+{
+	local target="$1"
+
+	serialize-log $split -l "$lockfile" -c \
+		"make $keep_going -j $jobs -C $kernel_tree ${arch:+ARCH="$arch"} \
+		${cross:+CROSS_COMPILE="$cross"} ${objdir:+O="$objdir"} \
+		CHECK=\"checker $sparse $smatch $cppcheck $coccinelle $check_only --\" \
+		C=$check W=1 KCFLAGS=-Wno-missing-field-initializers \
+		SHELL=\"serialize-log $split -l $lockfile\" $target"
+}
+
+lockfile=
+build_stdout=
+build_stdout_given=
+build_stderr=
+build_stderr_given=
+build_output=
+cleanup_handler()
+{
+	rm $verbose -f -- "$lockfile" >&2
+	[ -n "$build_stdout_given" ] || rm $verbose -f -- "$build_stdout" >&2
+	[ -n "$build_stderr_given" ] || rm $verbose -f -- "$build_stderr" >&2
+	rm $verbose -f -- "$build_output" >&2
+}
+set_cleanup_handler cleanup_handler
+
+TEMP=`getopt -n $PROG -o o:,j:,O:,E:,k:,a:,v,h --long objdir:,jobs:,stdout:,stderr:,keep-going:,arch:,sparse,smatch,cppcheck,coccinelle,check-only:,verbose,help -- "$@"` ||
+	fail_usage ""
+eval set -- "$TEMP"
+
+objdir=
+jobs=1
+keep_going=
+arch=
+cross=
+sparse=
+smatch=
+cppcheck=
+coccinelle=
+check_only=
+check=0
+verbose=
+
+while true; do
+	case "$1" in
+	-o|--objdir)
+		mkdir $verbose -p -- "$2" >&2
+		objdir="$(readlink -fv -- "$2")"
+		shift
+		;;
+	-j|--jobs)
+		jobs=$(opt_check_number "$1" "$2")
+		shift
+		;;
+	-O|--stdout)
+		touch "$2"
+		build_stdout="$(readlink -fv -- "$2")"
+		build_stdout_given="y"
+		shift
+		;;
+	-E|--stderr)
+		touch "$2"
+		build_stderr="$(readlink -fv -- "$2")"
+		build_stderr_given="y"
+		shift
+		;;
+	-k|--keep_going)
+		keep_going="--keep-going"
+		;;
+	-a|--arch)
+		arch="$(leave_first "$2")"
+		cross="$(leave_second "$2")"
+		shift
+		;;
+	--sparse)
+		sparse="--sparse"
+		check=1
+		;;
+	--smatch)
+		smatch="--smatch"
+		check=1
+		;;
+	--cppcheck)
+		cppcheck="--cppcheck"
+		check=1
+		;;
+	--coccinelle)
+		coccinelle="--coccinelle"
+		check=1
+		;;
+	--check-only)
+		check_only="--check-only $(opt_check_read "$1" "$2")"
+		shift
+		;;
+	-v|--verbose) verbose=-v
+		;;
+	-h|--help)
+		show_usage
+		exit 0
+		;;
+	--) shift; break
+                ;;
+	*) fail_usage "Unrecognized option: $1"
+		;;
+	esac
+	shift
+done
+
+[ "$#" -ge 2 ] || fatal 'Insufficient arguments'
+kernel_tree="$(opt_check_dir "kernel-tree" "$1")"; shift
+build_info="$kernel_tree${objdir:+ (O="$objdir")}"
+
+if [ -n "$build_stdout_given" ] || [ -n "$build_stderr_given" ]; then
+	split="-s"
+	[ -n "$build_stdout_given" ] || build_stdout="$(mktemp -t "$PROG.stdout.XXXX")"
+	[ -n "$build_stderr_given" ] || build_stderr="$(mktemp -t "$PROG.stderr.XXXX")"
+else
+	split=
+	build_output="$(mktemp -t "$PROG.output.XXXX")"
+fi
+
+lockfile="$(mktemp -t "$PROG.lock.XXXX")"
+
+failed=
+for target in $@; do
+	verbose "Making target \"$target\" for \"$build_info\""
+	if [ -z "$split" ]; then
+		make_target "$target" > "$build_output" || failed=1
+		[ -z "$failed" ] || echo "FAILURE" >> "$build_output"
+	else
+		make_target "$target" > "$build_stdout" 2> "$build_stderr" || failed=1
+		[ -z "$failed" ] || echo "FAILURE" >> "$build_stderr"
+	fi
+
+	if [ -n "$failed" ]; then
+		verbose "Failed to make target \"$target\" for \"$build_info\""
+		break
+ 	fi
+done
+
+[ -z "$build_stdout" ] || strip_log "$build_stdout"
+[ -z "$build_stderr" ] || strip_log "$build_stderr"
+[ -z "$build_output" ] || strip_log "$build_output"
+
+if [ -n "$build_stdout_given" ] || [ -n "$build_stderr_given" ]; then
+	[ -n "$build_stdout_given" ] || cat "$build_stdout"
+	[ -n "$build_stderr_given" ] || cat "$build_stderr"
+else
+	[ -z "$build_output" ] || cat "$build_output"
+fi
+
+if [ -z "$failed" ]; then
+	verbose "Successfully made all targets for \"$build_info\""
+else
+	verbose "Failed to make a target, exiting"
+fi

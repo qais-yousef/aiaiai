@@ -1,0 +1,176 @@
+#!/bin/sh -efu
+
+# Copyright 2011-2012 Intel Corporation
+# Author: Artem Bityutskiy
+# License: GPLv2
+
+srcdir="$(readlink -ev -- ${0%/*}/..)"
+PATH="$srcdir:$srcdir/email:$srcdir/libshell:$PATH"
+
+. shell-error
+. shell-args
+. shell-signal
+
+PROG="${0##*/}"
+message_time="yes"
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] <queuedir> <validator>
+
+This program dispatches the incoming queue of patches in the <queuedir>
+directory and runs the <validator> program for each patch (or patch series).
+Patches are supposed to be in mbox format.
+
+<queuedir>         - the directory containing the queue of patches
+<validator>        - the validation command.
+
+Options:
+  -J, --bigjobs=N    how many validators can be run at the same time (default 1);
+  -v, --verbose      be verbose;
+  -h, --help         show this text and exit.
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+verbose=
+quiet="-q"
+
+# Recursively follow the process tree starting from PID $1 and kill the process
+# with name $2
+kill_by_name()
+{
+	local parent="$1"; shift
+	local name="$1"; shift
+	local child
+
+	for child in $(ps -o pid --no-headers --ppid "$parent"); do
+		kill_by_name "$child" "$name"
+	done
+
+	! ps -p "$parent" -o comm= | grep -q -x -- "$name" || kill "$parent"
+}
+
+in_fifo=
+tmpdir=
+inotify_pid=
+cleanup_handler()
+{
+	rm -rf $verbose -- "$tmpdir" >&2
+	if [ -n "$in_fifo" ] && [ -n "$queuedir" ]; then
+		# Move files from "in_fifo" directory back to the queue
+		# directory - this will make sure we do not lose file if we are
+		# interrupted. We use "mv" to make sure we are protected from
+		# possible race conditions.
+		local tmp
+		tmp="$(mktemp -dt "$PROG.tmp.XXXX")"
+		mv $verbose -- "$in_fifo" "$tmp" >&2
+		in_fifo="$tmp/${in_fifo##*/}"
+		ls -A -- "$in_fifo" | xargs $verbose -I{} -- \
+			sh -c "mv -- \"$in_fifo/{}\" \"$queuedir\" >&2"
+		rm $verbose -rf -- "$tmp" >&2
+	fi
+
+	# Kill the tail process - this will send EOF to the fifo and xargs will
+	# exit when all the items in the fifo are processed
+	kill_by_name $$ "tail"
+
+	[ -z "$inotify_pid" ] || kill "$inotify_pid"
+}
+set_cleanup_handler cleanup_handler
+
+TEMP=`getopt -n $PROG -o J:,v,h --long bigjobs:,verbose,help -- "$@"` ||
+	fail_usage ""
+eval set -- "$TEMP"
+
+bigjobs=1
+
+while true; do
+	case "$1" in
+	-J|--bigjobs)
+		bigjobs=$(opt_check_number "$1" "$2")
+		shift
+		;;
+	-v|--verbose) verbose="--verbose"
+		;;
+	-h|--help)
+		show_usage
+		exit 0
+		;;
+	--) shift; break
+                ;;
+	*) fail_usage "Unrecognized option: $1"
+		;;
+	esac
+	shift
+done
+
+[ "$#" -eq 2 ] || fatal "Insufficient or too many arguments"
+
+[ -z "$verbose" ] || quiet=
+
+mkdir $verbose -p -- "$1" 1>&2
+queuedir=$(readlink -fv -- "$1"); shift
+validator="$1"; shift
+
+in_fifo="$(mktemp -dt "$PROG.in_fifo.XXXX")"
+tmpdir="$(mktemp -dt "$PROG.tmpdir.XXXX")"
+
+fifo="$tmpdir/fifo"
+mkfifo -- "$fifo"
+
+# tail -f is use to make sure we continue reading the fifo even after EOF.
+#
+# -P option of xargs provides us the parallelism.
+#
+# We execute the below command as a separate process - it will run the
+# validator for every file name read from the fifo.
+tail -f -- "$fifo" | xargs -I{} -P"$bigjobs" -- \
+	email-dispatcher-helper $verbose -- "$in_fifo/{}" "$tmpdir/STOP" \
+				      "$queuedir" "$validator" >&2 &
+
+# Loop forever, wait for new files in the queue directory using inotify and
+# validate them
+while :; do
+	if [ -e "$tmpdir/STOP" ]; then
+		message "Exiting due to error"
+		exit 1
+	fi
+
+	queue="$(ls -A -c -r -1 -- "$queuedir")"
+	if [ -z "$queue" ]; then
+		if [ -z "$inotify_pid" ]; then
+			inotifywait $quiet $quiet -e create -e moved_to "$queuedir" >&2 &
+			inotify_pid="$!"
+		fi
+
+		# Check the queue directory again to handle race conditions
+		queue="$(ls -A -c -r -1 -- "$queuedir")"
+		[ -z "$queue" ] || continue
+
+		verbose "Waiting for new files in $queuedir"
+		wait "$inotify_pid"
+		inotify_pid=
+
+		[ -z "$verbose" ] || echo >&2
+		verbose "Inotify event happened in $queuedir"
+	else
+		# Move files to the temporary directory and send file names to
+		# the fifo
+		printf "%s" "$queue" | xargs $verbose -I{} -- \
+			sh -c "mv -- \"$queuedir/{}\" \"$in_fifo\""
+		printf "%s" "$queue" | xargs $verbose -I{} -- \
+			sh -c "echo \"{}\" > \"$fifo\""
+
+		# Let the xargs a chance to start building before we give it
+		# more work
+		sleep 5
+	fi
+done
