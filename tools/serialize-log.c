@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <sys/wait.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 
 #define PROGRAM_NAME "serialize-log"
 #define TMPFILE_NAME "/tmp/" PROGRAM_NAME ".XXXXXX"
