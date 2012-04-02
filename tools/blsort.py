@@ -47,32 +47,22 @@ import re
 def gen_blocks(stream):
     """Parses input stream. Yields found blocks."""
 
-    btype = ""
     prefix = ""
     block = []
     for line in stream:
-        # 'In file inculded' block
+        if re.match("^[^\s]+/[^\s]+:", line):
+            new_prefix = line.split(':')[0]
+        else:
+            new_prefix = ""
+
         if re.match("^In file included from .+", line):
             yield block
-            btype = "ifi"
-            prefix = ""
-            block = [line]
-        elif btype == "ifi" and re.match('^\s+', line):
-            block.append(line)
-        # filename prefixed block
-        elif btype == "prefix" and line.startswith(prefix + ':'):
-            block.append(line)
-        elif re.match("^[^\s]+/[^\s]+:", line):
+            block = []
+        elif prefix != "" and new_prefix != prefix:
             yield block
-            prefix = line.split(':')[0]
-            btype = "prefix"
-            block = [line]
-        # the rest
-        else:
-            yield block
-            btype = "plain"
-            prefix = ""
-            block = [line]
+            block = []
+        prefix = new_prefix
+        block.append(line)
 
     yield block
 
