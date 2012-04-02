@@ -105,6 +105,8 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
+program_required "serialize-log"
+
 TEMP=`getopt -n $PROG -o o:,j:,O:,E:,k:,a:,v,h --long objdir:,jobs:,stdout:,stderr:,keep-going:,arch:,sparse,smatch,cppcheck,coccinelle,check-only:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"

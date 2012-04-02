@@ -11,6 +11,7 @@ PATH="$srcdir:$srcdir/libshell:$srcdir/tools:$PATH"
 . shell-args
 . shell-signal
 . shell-quote
+. sh-functions
 
 PROG="${0##*/}"
 
@@ -104,15 +105,19 @@ while true; do
 	case "$1" in
 	--sparse)
 		run_sparse=1
+		program_required "sparse"
 		;;
 	--smatch)
 		run_smatch=1
+		program_required "smatch"
 		;;
 	--cppcheck)
 		run_cppcheck=1
+		program_required "cppcheck"
 		;;
 	--coccinelle)
 		run_coccinelle=1
+		program_required "spatch"
 		;;
 	--check-only)
 		check_only="$(opt_check_read "$1" "$2")"

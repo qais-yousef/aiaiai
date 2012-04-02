@@ -6,6 +6,16 @@
 
 . shell-error
 
+# Die if a program is not in PATH
+# Usage: program_required <program_name>
+program_required()
+{
+	local prg="$1"
+
+	command -v "$prg" >/dev/null 2>&1 || \
+		fatal "Program \"$prg\" is required but not found in PATH"
+}
+
 # Fetch the first occurrence of an mbox header from a file
 # Usage: fetch_header <header_name> < <mbox_file>
 fetch_header()

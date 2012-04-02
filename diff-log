@@ -12,6 +12,7 @@ PATH="$srcdir:$srcdir/libshell:$srcdir/tools:$PATH"
 . shell-args
 . shell-signal
 . shell-quote
+. sh-functions
 
 PROG="${0##*/}"
 message_time="yes"
@@ -127,6 +128,8 @@ cleanup_handler()
 	fi
 }
 set_cleanup_handler cleanup_handler
+
+program_required "remap-log"
 
 TEMP=`getopt -n $PROG -o w:,p,v,h --long workdir:,preserve,verbose,help -- "$@"` ||
 	fail_usage ""
