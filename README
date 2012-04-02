@@ -279,8 +279,7 @@ useful. To use it, you have to clone it, patch it, and install in your system.
 
 $ git://repo.or.cz/smatch.git
 $ cd smatch
-$ git am <path_to_aiaiai>/tools/0001-change-error-formatting-to-match-gcc.patch
-$ make PREFIX=/home/aiaiai/programs/smatch all install
+$ make PREFIX=$HOME/programs/smatch all install
 $ export PATH="$PATH:/home/aiaiai/programs/smatch/bin"
 
 These commands will install smatch to "/home/aiaiai/programs/smatch". Of
@@ -296,8 +295,8 @@ Similarly to smatch, you need to install it manually. This is what I did:
 $ git clone git://git.kernel.org/pub/scm/devel/sparse/sparse.git
 $ cd sparse
 $ make
-$ cp sparse /home/aiaiai/bin
-$ export PATH="/home/aiaiai/bin:$PATH"
+$ cp sparse $HOME/bin
+$ export PATH="$HOME/bin:$PATH"
 
 Note, sparse is also part of smatch, but I do not know the difference between
 sparse which come from smatch and just sparse. I use the latter one.
