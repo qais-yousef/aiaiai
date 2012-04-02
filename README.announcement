@@ -78,8 +78,8 @@ Gitweb: http://git.infradead.org/users/dedekind/aiaiai.git
 Credits:
 * Intel and my colleagues
 * Kirill Shutemov - he started writing this stuff, review, gave ideas, etc
-* AltLinux guys for libshell
-  (git://git.altlinux.org/people/ldv/packages/libshell.git)
+* Alexey Gladkov and other AltLinux guys for libshell
+  (git://git.altlinux.org/people/legion/packages/libshell.git)
 * Al Viro for the remapper
   (git://git.kernel.org/pub/scm/linux/kernel/git/viro/remap.git)
 * Julia Lawall for amending coccinelle kernel patches to meet Aiaiai needs
