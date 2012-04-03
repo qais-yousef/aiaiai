@@ -8,37 +8,35 @@ Author: Ed Bartosh <eduard.bartosh@intel.com>
 Licence: GPLv2
 """
 
-"""
-Sorts the build log to make it possible to compare it to another build log. The
-idea is to identify independend blocks of text first and then sort these
-blocks. Blocks can be as follows.
-
-1. All consequitive lines starting with the same file prefix belong to one
-block, e.g.:
-driver.c:355: warning: unused variable 'a'
-driver.c:400: warning: no prototupe for function 'xxx'
-
-2. GCC 'In file included from' blocks look like this:
-
-In file included from include/linux/kernel.h:17:0,
-                 from include/linux/sched.h:55,
-                 from arch/arm/kernel/asm-offsets.c:13
-include/linux/bitops.h: In function 'hweight_long':
-include/linux/bitops.h:55:26: warning: signed and unsigned type in conditional expression [-Wsign-compare]
-
-or
-
-In file included from arch/x86/include/asm/uaccess.h:570:0,
-                from include/linux/uaccess.h:5,
-                from include/linux/highmem.h:7,
-                from include/linux/pagemap.h:10,
-                from fs/binfmt_misc.c:26:
-In function ‘copy_from_user’,
-    inlined from ‘parse_command.part.0’ at fs/binfmt_misc.c:422:20:
-arch/x86/include/asm/uaccess_32.h:211:26: warning: call to ‘copy_from_user_overflow’ declared with attribute warning: copy_from_user() buffer size is not provably correct [enabled by default]
-
-3. Any other line comprises an independent block
-"""
+# Sorts the build log to make it possible to compare it to another build log.
+# The idea is to identify independend blocks of text first and then sort these
+# blocks. Blocks can be as follows.
+#
+# 1. All consequitive lines starting with the same file prefix belong to one
+# block, e.g.:
+# driver.c:355: warning: unused variable 'a'
+# driver.c:400: warning: no prototupe for function 'xxx'
+#
+# 2. GCC 'In file included from' blocks look like this:
+#
+# In file included from include/linux/kernel.h:17:0,
+#                  from include/linux/sched.h:55,
+#                  from arch/arm/kernel/asm-offsets.c:13
+# include/linux/bitops.h: In function 'hweight_long':
+# include/linux/bitops.h:55:26: warning: signed and unsigned type in expression
+#
+# or
+#
+# In file included from arch/x86/include/asm/uaccess.h:570:0,
+#                 from include/linux/uaccess.h:5,
+#                 from include/linux/highmem.h:7,
+#                 from include/linux/pagemap.h:10,
+#                 from fs/binfmt_misc.c:26:
+# In function ‘copy_from_user’,
+#     inlined from ‘parse_command.part.0’ at fs/binfmt_misc.c:422:20:
+# arch/x86/include/asm/uaccess_32.h:211:26: warning: call to ‘copy_from_user’
+#
+# 3. Any other line comprises an independent block
 
 import sys
 import os
@@ -98,7 +96,8 @@ def main(argv):
     if len(argv) > 3:
         outfile = open(argv[3], "w")
 
-    with open(argv[1]) as infile1, open(argv[2]) as infile2:
+    with open(argv[1]) as infile1, \
+         open(argv[2]) as infile2:
 
         result = {}
         for blk1, blk2 in iter_both(gen_blocks(infile1), gen_blocks(infile2)):
