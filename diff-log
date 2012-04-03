@@ -179,20 +179,7 @@ remap-log -o "" -p "line " "$tmpdir/map" < "$input_log1" > "$log1.remapped"
 
 rename_log "$log1.remapped"
 
-blsort.py < "$log1.remapped" > "$log1.sorted" &
-pid1="$!"
-blsort.py < "$input_log2" > "$log2.sorted" &
-pid2="$!"
-
-wait "$pid1" || fatal "Error: while joining \"$log1.remapped\""
-wait "$pid2" || fatal "Error: while joining \"$input_log2\""
-
-# Finally we may produce a diff
-diff --label "before_patching.log" --label "after_patching.log " -U0 \
-	"$log1.sorted" "$log2.sorted" |
-	sed -e "s/^@@.*/@@ @@/g" > "$tmpdir/diff-nonstripped"
-
-remove_same_lines "$tmpdir/diff-nonstripped" > "$tmpdir/diff"
+blsort.py "$log1.remapped" "$input_log2" "$tmpdir/diff"
 
 # Make sure wo do not end up with an empty diff like this:
 #

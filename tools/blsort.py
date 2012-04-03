@@ -66,25 +66,63 @@ def gen_blocks(stream):
 
     yield block
 
+
+def iter_both(iter1, iter2):
+    """Iter two iterators. Return next not equal values from them until
+       both are exhausted.
+    """
+    def get_next(iterator):
+        """Get next item from the iterator. Return none
+           if there are not items anymore.
+        """
+        try:
+            return iterator.next()
+        except StopIteration:
+            return None
+
+    while True:
+        elem1, elem2 = get_next(iter1), get_next(iter2)
+
+        if elem1 == None and elem2 == None:
+            break
+        if elem1 == elem2:
+            continue
+        yield elem1, elem2
+
+
 def main(argv):
     """Script entry point."""
 
-    infile = sys.stdin
+    infile1, infile2 = open(argv[1]), open(argv[2])
     outfile = sys.stdout
-    if len(argv) > 1:
-        infile = open(argv[1])
-    if len(argv) > 2:
-        outfile = open(argv[2], "w")
+    if len(argv) > 3:
+        outfile = open(argv[3], "w")
 
-    for block in sorted(gen_blocks(infile)):
-        outfile.writelines(block)
+    with open(argv[1]) as infile1, open(argv[2]) as infile2:
+
+        result = {}
+        for blk1, blk2 in iter_both(gen_blocks(infile1), gen_blocks(infile2)):
+            for block, sign in [(tuple(blk1), "-"), (tuple(blk2), "+")]:
+                if block:
+                    if block in result:
+                        del result[block]
+                    else:
+                        result[block] = sign
+
+        result = sorted(result.items())
+        if result:
+            print "---", argv[1]
+            print "+++", argv[2]
+            for block, sign in result:
+                print "@@ @@"
+                for line in block:
+                    print "%s%s" % (sign, line),
 
     outfile.close()
-    infile.close()
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--help":
-        print "Usage: %s [<input log file>] [<sorted log file>]" % \
+        print "Usage: %s <input log 1> <input log 2> [<diff file>]" % \
               os.path.basename(sys.argv[0])
         sys.exit(0)
     sys.exit(main(sys.argv))
