@@ -20,10 +20,11 @@ show_usage()
 	cat <<-EOF
 Usage: $PROG [options] -- ...
 
-This program runs various checkers when building the kernel. Options for
-$PROG has to go first, then there has to be a "--" delimiter, and then any
-number of options which are not interpreted by this script but passed
-further to the checker (sparse or smatch).
+This is an internal aiaiai helper program whic runs various checkers when
+building the kernel. Options for $PROG has to go first, then there has to
+be a "--" delimiter, and then any number of options which are not
+interpreted by this script but passed further to the checker (sparse or
+smatch).
 
 Options:
       --sparse           check with sparse;
