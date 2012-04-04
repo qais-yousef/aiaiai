@@ -120,13 +120,14 @@ sends it back to the patch submitter.
     sparse/smatch/cppcheck/coccinelle tools. The reason we need it is because
     the kernel build system allows only one checker at a time.
 
-* diff-logs
-    Compares 2 build logs and provides the differences. Very useful for finding
-    out which new warnings a patch introduced: build the kernel before the
-    patch, and after the patch, and then compare the build logs.
+* diff-log
+    Compares 2 build logs and provides the differences. This script used the
+    'tools/remap-log' tool to re-map line numbers in the warnings of the first
+    build log to correspond to line numbers in the second build-log.
 
-    The diff-log uses the 'tools/remap-log' program to actually compare 2 build
-    logs.
+* diff-log-helper
+    A helper script for diff-log which sorts 2 build logs and compares them.
+    Written in Python because the shell version was too slow.
 
 * tools/remap-log
     This is a small C program originally written by Al Viro which helps
