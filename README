@@ -339,6 +339,7 @@ awk
 git
 lockfile
 diff
+inotifywait
 
 
 3.5 Code conventions
