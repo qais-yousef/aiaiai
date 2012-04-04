@@ -96,8 +96,8 @@ def main(argv):
 
         result = sorted(result.items())
         if result:
-            print "---", argv[1]
-            print "+++", argv[2]
+            print "--- before_patching.log"
+            print "+++ after_patching.log"
             for block, sign in result:
                 print "@@ @@"
                 for line in block:
