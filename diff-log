@@ -181,13 +181,6 @@ rename_log "$log1.remapped"
 
 blsort.py "$log1.remapped" "$input_log2" "$tmpdir/diff"
 
-# Make sure wo do not end up with an empty diff like this:
-#
-# --- before_patching.log
-# +++ after_patching.log
-# @@ @@
-[ "$(wc -l < "$tmpdir/diff")" -gt 3 ] || truncate -s0 "$tmpdir/diff"
-
 cat "$tmpdir/diff"
 
 verbose "Successfully compared $input_log1 and $input_log2"
