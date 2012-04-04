@@ -44,18 +44,25 @@ import itertools
 def gen_blocks(stream):
     """Parses input stream. Yields found blocks."""
 
+    btype = ""
     prefix = ""
     block = []
     for line in stream:
-        if re.match("^[^\s]+/[^\s]+:", line):
-            new_prefix = line.split(':')[0]
-        else:
-            new_prefix = ""
+        new_prefix = ""
+        match = re.match("^[^\s]+/[^\s:]+:[\d]*", line)
+        if match:
+            new_prefix = re.match("^[^\s]+/[^\s:]+:[\d]*", line).group()
 
         if re.match("^In file included from .+", line):
             yield block
             block = []
-        elif prefix != "" and new_prefix != prefix:
+            btype = "ifi"
+        elif btype == "ifi":
+            if prefix != "" and new_prefix != prefix:
+                yield block
+                block = []
+                btype = ""
+        elif new_prefix == "" or new_prefix != prefix:
             yield block
             block = []
         prefix = new_prefix
