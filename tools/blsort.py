@@ -41,6 +41,7 @@ Licence: GPLv2
 import sys
 import os
 import re
+import itertools
 
 def gen_blocks(stream):
     """Parses input stream. Yields found blocks."""
@@ -65,29 +66,6 @@ def gen_blocks(stream):
     yield block
 
 
-def iter_both(iter1, iter2):
-    """Iter two iterators. Return next not equal values from them until
-       both are exhausted.
-    """
-    def get_next(iterator):
-        """Get next item from the iterator. Return none
-           if there are not items anymore.
-        """
-        try:
-            return iterator.next()
-        except StopIteration:
-            return None
-
-    while True:
-        elem1, elem2 = get_next(iter1), get_next(iter2)
-
-        if elem1 == None and elem2 == None:
-            break
-        if elem1 == elem2:
-            continue
-        yield elem1, elem2
-
-
 def main(argv):
     """Script entry point."""
 
@@ -100,7 +78,10 @@ def main(argv):
          open(argv[2]) as infile2:
 
         result = {}
-        for blk1, blk2 in iter_both(gen_blocks(infile1), gen_blocks(infile2)):
+        for blk1, blk2 in itertools.izip_longest(gen_blocks(infile1),
+                              gen_blocks(infile2), fillvalue=None):
+            if blk1 == blk2:
+                continue
             for block, sign in [(tuple(blk1), "-"), (tuple(blk2), "+")]:
                 if block:
                     if block in result:
