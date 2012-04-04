@@ -77,7 +77,7 @@ def main(argv):
 
         result = {}
         for blk1, blk2 in itertools.izip_longest(gen_blocks(infile1),
-                              gen_blocks(infile2), fillvalue=None):
+                              gen_blocks(infile2), fillvalue=[]):
             if blk1 == blk2:
                 continue
             for block, sign in [(tuple(blk1), "-"), (tuple(blk2), "+")]:
