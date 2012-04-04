@@ -2,15 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-Build log sorter.
+Sort an compare 2 build logs.
 
 Author: Ed Bartosh <eduard.bartosh@intel.com>
 Licence: GPLv2
 """
 
-# Sorts the build log to make it possible to compare it to another build log.
-# The idea is to identify independend blocks of text first and then sort these
-# blocks. Blocks can be as follows.
+# Sorts 2 build logs and compares them. Blocks can be as follows.
 #
 # 1. All consequitive lines starting with the same file prefix belong to one
 # block, e.g.:
