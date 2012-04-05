@@ -116,10 +116,14 @@ def main(argv):
         if result:
             print "--- before_patching.log"
             print "+++ after_patching.log"
+            prefix = ""
             for block, sign in result:
-                print "@@ @@"
+                if not prefix or not block[0].startswith(prefix):
+                    print "@@ @@"
                 for line in block:
                     print "%s%s" % (sign, line),
+                if re.match("^[^\s]+/[^\s]+:", block[0]):
+                    prefix = block[0].split(':')[0]
 
     outfile.close()
 
