@@ -58,26 +58,23 @@ def gen_blocks(stream):
         if prefix and line.startswith(prefix):
             block.append(line)
 
+        # Define prefix for cases 2 and 3 for further processing
+        elif not prefix and btype in ("ifi", "infunc"):
+            block.append(line)
+            if re.match("^[^\s]+/[^\s]+:\d+:", line):
+                prefix = ":".join(line.split(':')[:2])
         # 'In file inculded' block (case 2.)
         elif re.match("^In file included from .+", line):
             yield block
             btype = "ifi"
             prefix = ""
             block = [line]
-        elif not prefix and btype == "ifi":
-            block.append(line)
-            if re.match("^[^\s]+/[^\s]+:\d+:", line):
-                prefix = ":".join(line.split(':')[:2])
         # 'In function' block (case 3.)
         elif re.match("^[^\s]+/[^\s]+: In function .+", line):
             yield block
             btype = "infunc"
             prefix = ""
             block = [line]
-        elif not prefix and btype == "infunc":
-            block.append(line)
-            if re.match("^[^\s]+/[^\s]+:\d+:",line):
-                prefix = ":".join(line.split(':')[:2])
         # file prefixed block (case 1.)
         elif re.match("^[^\s]+/[^\s]+:\d+:", line):
             yield block
