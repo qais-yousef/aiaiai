@@ -45,7 +45,7 @@ Let's briefly review the contents of the repository.
     script.
 
 * email/email-dispatcher
-    This scrip waits for the incoming patch-sets in a directory and run
+    This script waits for the incoming patch-sets in a directory and run
     a user-defined command for every incoming patch-set. The role of this
     script is to limit the amount of patch-sets we can run at a time. You
     can configure this via command line options.
@@ -115,7 +115,7 @@ sends it back to the patch submitter.
     one program goes as one big block and it is not mixed with the output of
     another command.
 
-* check
+* checker
     A helper script for 'make-kernel' which runs
     sparse/smatch/cppcheck/coccinelle tools. The reason we need it is because
     the kernel build system allows only one checker at a time.
@@ -278,7 +278,7 @@ Project homepage: http://smatch.sourceforge.net
 I do not think this tool is a part of Linux distributions. I found it very
 useful. To use it, you have to clone it, patch it, and install in your system.
 
-$ git://repo.or.cz/smatch.git
+$ git clone git://repo.or.cz/smatch.git
 $ cd smatch
 $ make PREFIX=$HOME/programs/smatch all install
 $ export PATH="$PATH:/home/aiaiai/programs/smatch/bin"
@@ -353,7 +353,7 @@ and conventions. Below are some of them.
 * Stdout is used only for user-friendly stuff. In many cases it is assumed that
   the higher-level scripts just capture the stdout of lower-level scripts and
   provide that to the user. For example, 'test-patchset' captures stdout of the
-  'test-bisectability' scripts and and uses it for reporting to the user. In
+  'test-bisectability' scripts and uses it for reporting to the user. In
   turn, the 'email-test-patchset' script captures stdout of the 'test-patchset'
   script and sends it back to the user via e-mail.
 
@@ -382,5 +382,5 @@ and conventions. Below are some of them.
   (ctrl-C must be handled gracefully)
 
 * Users' git repository have to be treated as read-only and no modifications
-  should be made there. All the work has to be don in a clone of the original
+  should be made there. All the work has to be done in a clone of the original
   repository.

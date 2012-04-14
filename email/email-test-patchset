@@ -127,7 +127,7 @@ strip_address()
 					   -e "s/,,/,/g" -e "s/^,//" -e "s/,$//"
 }
 
-# Fetch project name from the e-maal address. The project is specified like
+# Fetch project name from the e-mail address. The project is specified like
 # this: local+project@domain
 # Usage: project_name <list>
 project_name()

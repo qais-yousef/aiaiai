@@ -20,7 +20,7 @@ show_usage()
 	cat <<-EOF
 Usage: $PROG [options] -- ...
 
-This is an internal aiaiai helper program whic runs various checkers when
+This is an internal aiaiai helper program which runs various checkers when
 building the kernel. Options for $PROG has to go first, then there has to
 be a "--" delimiter, and then any number of options which are not
 interpreted by this script but passed further to the checker (sparse or
@@ -59,7 +59,7 @@ run_coccinelle()
 
 	spatches="$(find $srcdir -name '*.cocci')"
 	for spatch in $spatches; do
-		# Coccinelle is not stable enought so far and dies because of
+		# Coccinelle is not stable enough so far and dies because of
 		# internal issues sometimes or just never stops. So we specify
 		# a timeout as well as ignore its error code.
 		flags="-D report -no_show_diff -very_quiet -no_includes -include_headers -timeout 60"
@@ -159,7 +159,7 @@ fi
 # Run all the tools in background
 
 if [ -n "$run_sparse" ]; then
-	# Sparse uses stderr for check resuts, not sure about stdout
+	# Sparse uses stderr for check results, not sure about stdout
 	sparse "$@" > "$tmpdir/sparse" 2>&1 &
 	pid_sparse="$!"
 fi
