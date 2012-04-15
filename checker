@@ -166,7 +166,7 @@ fi
 if [ -n "$run_smatch" ]; then
 	# Smatch uses stderr for reporting about internal issues and stdout for
 	# check results
-	smatch "$@" > "$tmpdir/smatch" 2>/dev/null &
+	smatch --project=kernel "$@" > "$tmpdir/smatch" 2>/dev/null &
 	pid_smatch="$!"
 fi
 if [ -n "$run_cppcheck" ]; then
