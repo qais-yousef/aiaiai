@@ -41,12 +41,15 @@ Let's briefly review the contents of the repository.
 
 * email/email-lda
     This is Aiaiai's local delivery agent script which receives the incoming
-    emails from the mail server (via a pipe) and pipes them to the 'email-lda'
-    script.
+    emails from the mail server (via a pipe), procesess them (drops all e-mails
+    which do not start with [PATCH*], detects and collects patch-sets), and
+    puts them to the "queue" sub-directory of the working directory. This
+    should, in turn, wake up the "email-dispatcher" script which will take
+    further care of the patch or patch-set.
 
 * email/email-dispatcher
-    This script waits for the incoming patch-sets in a directory and run
-    a user-defined command for every incoming patch-set. The role of this
+    This script waits for the incoming patch-sets in the "queue" directory and
+    runs a user-defined command for every incoming patch-set. The role of this
     script is to limit the amount of patch-sets we can run at a time. You
     can configure this via command line options.
 
