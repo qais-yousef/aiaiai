@@ -185,25 +185,25 @@ fi
 # Wait for the tools
 
 if [ -n "$run_sparse" ]; then
-	wait "$pid_sparse"
+	wait "$pid_sparse" ||:
 	if [ -s "$tmpdir/sparse" ]; then
 		cat "$tmpdir/sparse" | sed -e "s/$/ [sparse]/" 1>&2
 	fi
 fi
 if [ -n "$run_smatch" ]; then
-	wait "$pid_smatch"
+	wait "$pid_smatch" ||:
 	if [ -s "$tmpdir/smatch" ]; then
 		cat "$tmpdir/smatch" | sed -e "s/$/ [smatch]/" 1>&2
 	fi
 fi
 if [ -n "$run_cppcheck" ]; then
-	wait "$pid_cppcheck"
+	wait "$pid_cppcheck" ||:
 	if [ -s "$tmpdir/cppcheck" ]; then
 		cat "$tmpdir/cppcheck" | sed -e "s/$/ [cppcheck]/" 1>&2
 	fi
 fi
 if [ -n "$run_coccinelle" ]; then
-	wait "$pid_coccinelle"
+	wait "$pid_coccinelle" ||:
 	if [ -s "$tmpdir/coccinelle" ]; then
 		cat "$tmpdir/coccinelle" | sed -e "s/$/ [coccinelle]/" 1>&2
 	fi
