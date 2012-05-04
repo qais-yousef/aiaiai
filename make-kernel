@@ -86,7 +86,8 @@ make_target()
 		"make $keep_going -j $jobs -C $kernel_tree ${arch:+ARCH="$arch"} \
 		${cross:+CROSS_COMPILE="$cross"} ${objdir:+O="$objdir"} \
 		CHECK=\"checker $sparse $smatch $cppcheck $coccinelle $check_only --\" \
-		C=$check W=1 KCFLAGS=-Wno-missing-field-initializers \
+		C=$check W=1 \
+		KCFLAGS='-Wno-missing-field-initializers -Wno-sign-compare' \
 		SHELL=\"serialize-log $split -l $lockfile\" $target"
 }
 
