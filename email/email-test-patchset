@@ -12,7 +12,7 @@ PATH="$srcdir:$srcdir/email:$srcdir/libshell:$PATH"
 . shell-signal
 . shell-ini-config
 . shell-quote
-. sh-functions
+. aiaiai-sh-functions
 
 PROG="${0##*/}"
 export message_time="yes"

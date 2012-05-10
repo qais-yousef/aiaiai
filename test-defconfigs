@@ -10,7 +10,7 @@ PATH="$srcdir:$srcdir/libshell:$srcdir/tools:$PATH"
 . shell-error
 . shell-args
 . shell-signal
-. sh-functions
+. aiaiai-sh-functions
 
 PROG="${0##*/}"
 message_time="yes"
