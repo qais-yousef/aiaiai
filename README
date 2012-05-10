@@ -118,10 +118,11 @@ sends it back to the patch submitter.
     one program goes as one big block and it is not mixed with the output of
     another command.
 
-* checker
+* aiaiai-checker
     A helper script for 'make-kernel' which runs
     sparse/smatch/cppcheck/coccinelle tools. The reason we need it is because
-    the kernel build system allows only one checker at a time.
+    the kernel build system allows only one checking program at a time, but we
+    want to run multiple of them.
 
 * diff-log
     Compares 2 build logs and provides the differences. This script used the
