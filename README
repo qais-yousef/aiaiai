@@ -177,10 +177,6 @@ sends it back to the patch submitter.
     If the patch-set changes a defconfig, this script verifies that the
     defconfig is changed properly ("make savedefconfig" was used).
 
-* clean-cmt-msg
-    A small helper script which may be used to clean-up the commit message
-    before applying a patch.
-
 * decode-rfc-2047
     A small helper script which decodes unreadable patch subjects encoded with
     RFC-2047 MIME encoding.
