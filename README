@@ -96,13 +96,13 @@ sends it back to the patch submitter.
     the kernel to test against, the commit id to test against, which tests to
     run, etc.
 
-* make-kernel
+* aiaiai-make-kernel
     Low-level scripts which builds the kernel. It has several switches which
     change its behavior, e.g., you can select whether you want to run
     sparse/smatch/cppcheck/coccinelle tools or not.
 
-    'make-kernel' utilizes the 'tools/serialize-log' utility to make sure the
-    build logs of parallel builds are not scrambled and stay readable.
+    'aiaiai-make-kernel' utilizes the 'tools/serialize-log' utility to make sure
+    the build logs of parallel builds are not scrambled and stay readable.
 
 * tools/serialize-log
     This utility was inspired by Eric Melski's blog-post I found in the Internet.
@@ -119,7 +119,7 @@ sends it back to the patch submitter.
     another command.
 
 * aiaiai-checker
-    A helper script for 'make-kernel' which runs
+    A helper script for 'aiaiai-make-kernel' which runs
     sparse/smatch/cppcheck/coccinelle tools. The reason we need it is because
     the kernel build system allows only one checking program at a time, but we
     want to run multiple of them.
@@ -186,7 +186,7 @@ To summarize:
    * it runs 'test-bisectability'
    * it runs 'test-defconfigs'
    * for every configuration specified by the user, it builds the kernel
-     before and after the patch using the 'make-kernel' script, then
+     before and after the patch using the 'aiaiai-make-kernel' script, then
      compares the build log using the 'aiaiai-diff-log' script.
    * Things are done in parallel.
    * The results of all tests are collected and printed to stdout

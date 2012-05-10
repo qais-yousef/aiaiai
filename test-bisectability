@@ -80,7 +80,7 @@ compile_test()
 	# Apply the patch
 	apply_patch < "$file" || exit 0
 
-	make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt \
+	aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt \
 		-O "$tmpdir/$defconfig.stdout.log" -E "$tmpdir/$defconfig.stderr.log" \
 		-- "$cloned_kernel" "$defconfig" all
 	failed="$(tail -n1 -- "$tmpdir/$defconfig.stderr.log")"
@@ -201,7 +201,7 @@ commit_id="$(git --git-dir="$kernel_tree/.git" rev-parse "$commit_id^{commit}")"
 git reset $quiet --hard "$commit_id" >&2
 
 verbose "Building the base tree"
-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt \
+aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt \
 	-O "$tmpdir/$defconfig.stdout.log" -E "$tmpdir/$defconfig.stderr.log" \
 	-- "$cloned_kernel" "$defconfig" all
 if build_failed "$tmpdir/$defconfig.stderr.log"; then
