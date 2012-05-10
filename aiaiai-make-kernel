@@ -28,6 +28,7 @@ Options:
   -o, --objdir=OBJDIR    locate all output files in OBJDIR, including .config
                          (O=OBJDIR Kbuild feature); if undefined - use the
 			 source directory (<kernel-tree>);
+  -D, --defconfig        name of the defconfig to use for each target;
   -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
   -O, --stdout=FILE      redirect stdout of the build to FILE;
   -E, --stderr=FILE      redirect stderr of the build to FILE (note, if neither
@@ -82,6 +83,11 @@ make_target()
 {
 	local target="$1"
 
+	if [ -n "$defconfig" ]; then
+		make ${arch:+ARCH="$arch"} ${cross:+CROSS_COMPILE="$cross"} \
+		${objdir:+O="$objdir"} -- "$defconfig"
+	fi
+
 	aiaiai-locker $split -l "$lockfile" -c \
 		"make $keep_going -j $jobs -C $kernel_tree ${arch:+ARCH="$arch"} \
 		${cross:+CROSS_COMPILE="$cross"} ${objdir:+O="$objdir"} \
@@ -108,11 +114,12 @@ set_cleanup_handler cleanup_handler
 
 program_required "aiaiai-locker"
 
-TEMP=`getopt -n $PROG -o o:,j:,O:,E:,k:,a:,v,h --long objdir:,jobs:,stdout:,stderr:,keep-going:,arch:,sparse,smatch,cppcheck,coccinelle,check-only:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o o:,D:,j:,O:,E:,k:,a:,v,h --long objdir:,defconfig:,jobs:,stdout:,stderr:,keep-going:,arch:,sparse,smatch,cppcheck,coccinelle,check-only:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
 objdir=
+defconfig=
 jobs=1
 keep_going=
 arch=
@@ -130,6 +137,10 @@ while true; do
 	-o|--objdir)
 		mkdir $verbose -p -- "$2" >&2
 		objdir="$(readlink -fv -- "$2")"
+		shift
+		;;
+	-D|--defconfig)
+		defconfig="$2"
 		shift
 		;;
 	-j|--jobs)
