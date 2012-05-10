@@ -39,7 +39,7 @@ Let's briefly review the contents of the repository.
 1.1 E-mail-related scripts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* email/email-lda
+* email/aiaiai-email-lda
     This is Aiaiai's local delivery agent script which receives the incoming
     emails from the mail server (via a pipe), procesess them (drops all e-mails
     which do not start with [PATCH*], detects and collects patch-sets), and
@@ -71,9 +71,9 @@ Let's briefly review the contents of the repository.
     look inside - the file is self-descriptive.
 
 To recap. When you send an e-mail to Aiaiai, the servers' MTA (postfix)
-pipes it to 'email-lda', which will first collects all the patches belonging to
-this patch-sets, and when it has all of them, it squashes them into one mbox
-file and moves it to the queue directory. This will wake up the
+pipes it to 'aiaiai-email-lda', which will first collects all the patches
+belonging to this patch-sets, and when it has all of them, it squashes them
+into one mbox file and moves it to the queue directory. This will wake up the
 'aiaiai-email-dispatcher' script, which will execute 'email-test-patchset' for
 this mbox (unless there are already too many jobs, in which case it will
 wait).
