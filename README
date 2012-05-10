@@ -177,7 +177,7 @@ sends it back to the patch submitter.
     If the patch-set changes a defconfig, this script verifies that the
     defconfig is changed properly ("make savedefconfig" was used).
 
-* decode-rfc-2047
+* aiaiai-decode-rfc-2047
     A small helper script which decodes unreadable patch subjects encoded with
     RFC-2047 MIME encoding.
 

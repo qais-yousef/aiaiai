@@ -23,7 +23,7 @@ fetch_header()
 	local hdr="$1"
 
 	# Take only the first occurrence of the header
-	formail -z -c -x "$hdr:" | head -n1 | decode-rfc-2047
+	formail -z -c -x "$hdr:" | head -n1 | aiaiai-decode-rfc-2047
 }
 
 # The same as fetch_header, but exits with code 1 if the header hasn't been found
@@ -42,7 +42,7 @@ fetch_all_headers()
 	local hdr="$1"
 
 	# Take only the first occurrence of the header
-	formail -s sh -c "formail -z -c -x \"$hdr:\" | head -n1" | decode-rfc-2047
+	formail -s sh -c "formail -z -c -x \"$hdr:\" | head -n1" | aiaiai-decode-rfc-2047
 }
 
 # All patches we deal with has to have the following prefix
