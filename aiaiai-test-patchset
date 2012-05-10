@@ -379,7 +379,6 @@ wait "$pid_checkpatch" || fatal "checkpatch failed"
 
 # Print the results
 
-print_separator
 echo "Tested the patch(es) on top of the following commit:"
 git --no-pager log -1 --oneline "$commit_id1"
 

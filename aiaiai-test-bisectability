@@ -232,5 +232,3 @@ while [ "$n" -lt "$patch_cnt" ]; do
 	compile_test "$tmp_mbox"
 	n="$(($n+1))"
 done
-
-echo "Bisecability test passed"
