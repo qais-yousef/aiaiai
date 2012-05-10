@@ -187,7 +187,7 @@ test_configuration()
 
 	verbose "Done with patched kernel"
 
-	diff-log $verbose $preserve "$tmpdir/diff-for-diff-log" "$log1.stderr.log" \
+	aiaiai-diff-log $verbose $preserve "$tmpdir/diff-for-diff-log" "$log1.stderr.log" \
 		-w "$tmpdir" "$log2.stderr.log" > "$tmpdir/$config.stderr.diff"
 }
 
@@ -322,7 +322,7 @@ verbose "Commit after applying the patch(es): $(git log -1 --oneline "$commit_id
 #
 git format-patch -M --patience --stdout "$commit_id1".."$commit_id2" > "$mbox"
 
-# Generate a diff for diff-log
+# Generate a diff for aiaiai-diff-log
 git diff -U0 -M "$commit_id1".."$commit_id2" > "$tmpdir/diff-for-diff-log"
 
 # Generate a diff for checkpatch.pl

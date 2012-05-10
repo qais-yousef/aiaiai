@@ -124,14 +124,14 @@ sends it back to the patch submitter.
     the kernel build system allows only one checking program at a time, but we
     want to run multiple of them.
 
-* diff-log
+* aiaiai-diff-log
     Compares 2 build logs and provides the differences. This script used the
     'tools/remap-log' tool to re-map line numbers in the warnings of the first
     build log to correspond to line numbers in the second build-log.
 
 * aiaiai-diff-log-helper
-    A helper script for diff-log which sorts 2 build logs and compares them.
-    Written in Python because the shell version was too slow.
+    A helper script for aiaiai-diff-log which sorts 2 build logs and compares
+    them.  Written in Python because the shell version was too slow.
 
 * tools/remap-log
     This is a small C program originally written by Al Viro which helps
@@ -165,7 +165,7 @@ sends it back to the patch submitter.
 
 * strip-log
     A helper script which strips things like CRC and path prefixes in order to
-    prepare build logs to be compared with 'diff-logs'.
+    prepare build logs to be compared with 'aiaiai-diff-log'.
 
 * test-bisectability
     Accepts a patch-set as the input and checks that the patch-set does not
@@ -191,14 +191,14 @@ To summarize:
    * it runs 'test-defconfigs'
    * for every configuration specified by the user, it builds the kernel
      before and after the patch using the 'make-kernel' script, then
-     compares the build log using the 'diff-log' script.
+     compares the build log using the 'aiaiai-diff-log' script.
    * Things are done in parallel.
    * The results of all tests are collected and printed to stdout
    * The "verbose" contents is printed to stderr
    * Many of the jobs above are run in parallel
 
-The 'diff-log' script which compares 2 logs, uses 'strip-log' to strip path
-prefixes and other things which may vary between builds. And it uses the
+The 'aiaiai-diff-log' script which compares 2 logs, uses 'strip-log' to strip
+path prefixes and other things which may vary between builds. And it uses the
 'remap-log' tool for comparing 2 build logs the smart way.
 
 
