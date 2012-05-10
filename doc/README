@@ -54,19 +54,19 @@ Let's briefly review the contents of the repository.
     can configure this via command line options.
 
     As it was already said, in our setup 'aiaiai-email-dispatcher' runs
-    'email-test-patchset'.
+    'aiaiai-email-test-patchset'.
 
 * email/aiaiai-email-dispatcher-helper
     This is a private helper script for 'aiaiai-email-dispatcher'.
 
-* email/email-test-patchset
+* email/aiaiai-email-test-patchset
     This script parses the incoming e-mail (in mbox format), finds out which
     kernel tree has to be used, sends a notification to the sender, runs
     the 'aiaiai-test-patchset' script with the right command-line arguments, and
     sends the results of 'aiaiai-test-patchset' back to the patch submitter.
 
 * email/aiaiai.cfg
-    This is an example of 'email-test-patchset' configuration file. It
+    This is an example of 'aiaiai-email-test-patchset' configuration file. It
     describes the projects Aiaiai supports and their parameters. Take a
     look inside - the file is self-descriptive.
 
@@ -74,16 +74,17 @@ To recap. When you send an e-mail to Aiaiai, the servers' MTA (postfix)
 pipes it to 'aiaiai-email-lda', which will first collects all the patches
 belonging to this patch-sets, and when it has all of them, it squashes them
 into one mbox file and moves it to the queue directory. This will wake up the
-'aiaiai-email-dispatcher' script, which will execute 'email-test-patchset' for
-this mbox (unless there are already too many jobs, in which case it will
-wait).
+'aiaiai-email-dispatcher' script, which will execute
+'aiaiai-email-test-patchset' for this mbox (unless there are already too many
+jobs, in which case it will wait).
 
-The 'email-test-patchset' will parse the patch-set, find out which kernel
-it has to be tested against using the configuration file, send a notification
-e-mail to the patch sender, and execute the 'aiaiai-test-patchset' script.
+The 'aiaiai-email-test-patchset' will parse the patch-set, find out which
+kernel it has to be tested against using the configuration file, send a
+notification e-mail to the patch sender, and execute the 'aiaiai-test-patchset'
+script.
 
 The 'aiaiai-test-patchset' script does all the testing work and outputs the
-test results to stdout. 'email-test-patchset' captures the output and
+test results to stdout. 'aiaiai-email-test-patchset' captures the output and
 sends it back to the patch submitter.
 
 
@@ -354,7 +355,7 @@ and conventions. Below are some of them.
   the higher-level scripts just capture the stdout of lower-level scripts and
   provide that to the user. For example, 'aiaiai-test-patchset' captures stdout
   of the 'aiaiai-test-bisectability' scripts and uses it for reporting to the
-  user. In turn, the 'email-test-patchset' script captures stdout of the
+  user. In turn, the 'aiaiai-email-test-patchset' script captures stdout of the
   'aiaiai-test-patchset' script and sends it back to the user via e-mail.
 
 * Stderr is use for all the debugging, verbose and additional prints.
