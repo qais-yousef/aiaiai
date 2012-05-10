@@ -27,7 +27,7 @@ Usage: $PROG [options] <kernel-tree> <targets...>
 Options:
   -o, --objdir=OBJDIR    locate all output files in OBJDIR, including .config
                          (O=OBJDIR Kbuild feature); if undefined - use the
-			 source directory (<kernel-tree>);
+                         source directory (<kernel-tree>);
   -D, --defconfig        name of the defconfig to use for each target;
   -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
   -O, --stdout=FILE      redirect stdout of the build to FILE;
