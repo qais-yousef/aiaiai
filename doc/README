@@ -44,20 +44,20 @@ Let's briefly review the contents of the repository.
     emails from the mail server (via a pipe), procesess them (drops all e-mails
     which do not start with [PATCH*], detects and collects patch-sets), and
     puts them to the "queue" sub-directory of the working directory. This
-    should, in turn, wake up the "email-dispatcher" script which will take
-    further care of the patch or patch-set.
+    should, in turn, wake up the "aiaiai-email-dispatcher" script which will
+    take further care of the patch or patch-set.
 
-* email/email-dispatcher
+* email/aiaiai-email-dispatcher
     This script waits for the incoming patch-sets in the "queue" directory and
     runs a user-defined command for every incoming patch-set. The role of this
     script is to limit the amount of patch-sets we can run at a time. You
     can configure this via command line options.
 
-    As it was already said, in our setup 'email-dispatcher' runs
+    As it was already said, in our setup 'aiaiai-email-dispatcher' runs
     'email-test-patchset'.
 
-* email/email-dispatcher-helper
-    This is a private helper script for 'email-dispatcher'
+* email/aiaiai-email-dispatcher-helper
+    This is a private helper script for 'aiaiai-email-dispatcher'.
 
 * email/email-test-patchset
     This script parses the incoming e-mail (in mbox format), finds out which
@@ -74,8 +74,9 @@ To recap. When you send an e-mail to Aiaiai, the servers' MTA (postfix)
 pipes it to 'email-lda', which will first collects all the patches belonging to
 this patch-sets, and when it has all of them, it squashes them into one mbox
 file and moves it to the queue directory. This will wake up the
-'email-dispatcher' script, which will execute 'email-test-patchset' for this
-mbox (unless there are already too many jobs, in which case it will wait).
+'aiaiai-email-dispatcher' script, which will execute 'email-test-patchset' for
+this mbox (unless there are already too many jobs, in which case it will
+wait).
 
 The 'email-test-patchset' will parse the patch-set, find out which kernel
 it has to be tested against using the configuration file, send a notification
