@@ -180,6 +180,10 @@ sends it back to the patch submitter.
 * aiaiai-concat-mboxes
     A little helper script which concatenates multiple mbox files into one.
 
+* aiaiai-match-keywords
+   A simple script which can be used to match certain unwelcom keywords in
+   patches.
+
 To summarize:
  * 'test-patchset' is the central script
    * it runs 'checkpatch.pl'

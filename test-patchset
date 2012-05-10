@@ -334,7 +334,7 @@ pid_checkpatch="$!"
 
 # Search for keywords
 if [ -n "$keywords" ]; then
-	match-keywords $verbose "$mbox" < "$keywords" > "$tmpdir/keywords.results" &
+	aiaiai-match-keywords $verbose "$mbox" < "$keywords" > "$tmpdir/keywords.results" &
 	pid_keywords="$!"
 fi
 
@@ -360,7 +360,7 @@ test-defconfigs $verbose $preserve -c "$commit_id1" -i "$mbox" -w "$tmpdir" \
 	--dont-clone "$cloned_kernel2" > "$tmpdir/test-defconfigs.results"
 
 wait "$pid_checkpatch" || fatal "checkpatch failed"
-[ -z "$keywords" ]     || wait "$pid_keywords" || fatal "match-keywords failed"
+[ -z "$keywords" ]     || wait "$pid_keywords" || fatal "aiaiai-match-keywords failed"
 [ -z "$pid_bisect" ]   || wait "$pid_bisect"   || fatal "test-bisectability failed"
 
 # Print the results
