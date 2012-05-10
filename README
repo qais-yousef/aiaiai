@@ -163,7 +163,7 @@ sends it back to the patch submitter.
     so the build logs of the pre-patched and patched kernels will contain the
     same line and the diff won't show anything.
 
-* test-bisectability
+* aiaiai-test-bisectability
     Accepts a patch-set as the input and checks that the patch-set does not
     break compilation at any step. This is achieved by applying every patch in
     the series one-by-one, compiling the kernel and checking that compilation
@@ -187,7 +187,7 @@ sends it back to the patch submitter.
 To summarize:
  * 'test-patchset' is the central script
    * it runs 'checkpatch.pl'
-   * it runs 'test-bisectability'
+   * it runs 'aiaiai-test-bisectability'
    * it runs 'test-defconfigs'
    * for every configuration specified by the user, it builds the kernel
      before and after the patch using the 'aiaiai-make-kernel' script, then
@@ -352,7 +352,7 @@ and conventions. Below are some of them.
 * Stdout is used only for user-friendly stuff. In many cases it is assumed that
   the higher-level scripts just capture the stdout of lower-level scripts and
   provide that to the user. For example, 'test-patchset' captures stdout of the
-  'test-bisectability' scripts and uses it for reporting to the user. In
+  'aiaiai-test-bisectability' scripts and uses it for reporting to the user. In
   turn, the 'email-test-patchset' script captures stdout of the 'test-patchset'
   script and sends it back to the user via e-mail.
 

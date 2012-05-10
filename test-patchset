@@ -142,10 +142,10 @@ test_configuration()
 	[ -z "$arch" ] || arch_opt="-a $arch${cross:+",$cross"}"
 
 	if [ -n "$bisectability" ]; then
-		# We share the same source tree with 'test-bisectability', so
+		# We share the same source tree with 'aiaiai-test-bisectability', so
 		# wait for it (it could be run at the previous iteration)
 		if [ -n "$pid_bisect" ]; then
-			wait "$pid_bisect" || fatal "test-bisectability failed"
+			wait "$pid_bisect" || fatal "aiaiai-test-bisectability failed"
 			pid_bisect=
 		fi
 
@@ -169,7 +169,7 @@ test_configuration()
 	# Run the bisectability test, re-use our kernel sources and built
 	# objects.
 	if [ -n "$bisectability" ]; then
-		test-bisectability $verbose $preserve -j "$jobs" -c "$commit_id1" \
+		aiaiai-test-bisectability $verbose $preserve -j "$jobs" -c "$commit_id1" \
 			--dont-clone -i "$mbox" -w "$tmpdir" -o "$obj1" -- \
 			"$cloned_kernel1" "$config" > "$tmpdir/$config.bisect.results" &
 		pid_bisect="$!"
@@ -355,13 +355,13 @@ for defconfig in $defconfigs; do
 done
 
 # Check defconfigs - use the second copy of the kernel because the first one is
-# used by 'test-bisectability'.
+# used by 'aiaiai-test-bisectability'.
 test-defconfigs $verbose $preserve -c "$commit_id1" -i "$mbox" -w "$tmpdir" \
 	--dont-clone "$cloned_kernel2" > "$tmpdir/test-defconfigs.results"
 
 wait "$pid_checkpatch" || fatal "checkpatch failed"
 [ -z "$keywords" ]     || wait "$pid_keywords" || fatal "aiaiai-match-keywords failed"
-[ -z "$pid_bisect" ]   || wait "$pid_bisect"   || fatal "test-bisectability failed"
+[ -z "$pid_bisect" ]   || wait "$pid_bisect"   || fatal "aiaiai-test-bisectability failed"
 
 # Print the results
 
