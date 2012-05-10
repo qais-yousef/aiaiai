@@ -82,13 +82,13 @@ make_target()
 {
 	local target="$1"
 
-	serialize-log $split -l "$lockfile" -c \
+	aiaiai-locker $split -l "$lockfile" -c \
 		"make $keep_going -j $jobs -C $kernel_tree ${arch:+ARCH="$arch"} \
 		${cross:+CROSS_COMPILE="$cross"} ${objdir:+O="$objdir"} \
 		CHECK=\"aiaiai-checker $sparse $smatch $cppcheck $coccinelle $check_only --\" \
 		C=$check W=1 \
 		KCFLAGS='-Wno-missing-field-initializers -Wno-sign-compare' \
-		SHELL=\"serialize-log $split -l $lockfile\" $target"
+		SHELL=\"aiaiai-locker $split -l $lockfile\" $target"
 }
 
 lockfile=
@@ -106,7 +106,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-program_required "serialize-log"
+program_required "aiaiai-locker"
 
 TEMP=`getopt -n $PROG -o o:,j:,O:,E:,k:,a:,v,h --long objdir:,jobs:,stdout:,stderr:,keep-going:,arch:,sparse,smatch,cppcheck,coccinelle,check-only:,verbose,help -- "$@"` ||
 	fail_usage ""

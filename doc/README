@@ -17,9 +17,8 @@ Also it is useful to know that the scripts never modify the repositories
 you specify and the scripts remove all the temporary files upon exit,
 Ctrl-C interruption, or error (unless -p option is specified).
 
-Do not forget to compile the 'remap-log' and 'serialize-log' tools before using
-Aiaiai:
-$ make -C external
+Do not forget to compile the 'remap-log' and 'aiaiai-locker' tools before using
+Aiaiai by just typing "make".
 
 The layout of the repository.
 
@@ -28,6 +27,8 @@ The layout of the repository.
     you do not need these scripts.
 * aiaiai/external/
     Some external tools and files which we use are stored here.
+* aiaiai/doc
+    Some documentation.
 * aiaiai/
     The root repository directory contains the scripts which do all the
     patch checking work. The central script is 'aiaiai-test-patchset' which
@@ -103,17 +104,17 @@ sends it back to the patch submitter.
     change its behavior, e.g., you can select whether you want to run
     sparse/smatch/cppcheck/coccinelle tools or not.
 
-    'aiaiai-make-kernel' utilizes the 'external/serialize-log' utility to make
+    'aiaiai-make-kernel' utilizes the 'aiaiai-locker' utility to make
     sure the build logs of parallel builds are not scrambled and stay readable.
 
-* external/serialize-log
+* aiaiai-locker
     This utility was inspired by Eric Melski's blog-post I found in the Internet.
     We use this tool to make Linux kernel build logs saner than parallel build
     produces (e.g., "make -j 20"). Indeed, parallel make scrambles all the
     lines which makes build logs not comparable and not readable.
 
-    The idea is to run all make commands via the 'serialize-log' utility using
-    the GNU make 'SHELL' variable re-definition. 'serialize-log' intercepts the
+    The idea is to run all make commands via the 'aiaiai-locker' utility using
+    the GNU make 'SHELL' variable re-definition. 'aiaiai-locker' intercepts the
     stdout and stderr output of commands, gathers all the output until the
     command finishes, and locks a common lockfile, and prints the intercepted
     output. So the effect of this is that the in the build log the output of

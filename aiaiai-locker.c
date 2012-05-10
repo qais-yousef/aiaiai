@@ -17,7 +17,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 
-#define PROGRAM_NAME "serialize-log"
+#define PROGRAM_NAME "aiaiai-locker"
 #define TMPFILE_NAME "/tmp/" PROGRAM_NAME ".XXXXXX"
 #define BUF_SIZE 8192
 

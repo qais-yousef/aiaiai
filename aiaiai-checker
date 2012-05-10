@@ -65,9 +65,9 @@ run_coccinelle()
 		flags="-D report -no_show_diff -very_quiet -no_includes -include_headers -timeout 60"
 
 		# Run coccinelle for each semantic patch in parallel. This may load the
-		# system too heavily, though. We use serialize-log to make sure
+		# system too heavily, though. We use aiaiai-locker to make sure
 		# we have non-scrambled output.
-		serialize-log -s -l "$tmpdir/lockfile" -c \
+		aiaiai-locker -s -l "$tmpdir/lockfile" -c \
 			"spatch $flags -sp_file $spatch $file_to_check" ||: &
 		pids="$pids $!"
 	done
