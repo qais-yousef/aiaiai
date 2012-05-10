@@ -356,7 +356,7 @@ done
 
 # Check defconfigs - use the second copy of the kernel because the first one is
 # used by 'aiaiai-test-bisectability'.
-test-defconfigs $verbose $preserve -c "$commit_id1" -i "$mbox" -w "$tmpdir" \
+aiaiai-test-defconfigs $verbose $preserve -c "$commit_id1" -i "$mbox" -w "$tmpdir" \
 	--dont-clone "$cloned_kernel2" > "$tmpdir/test-defconfigs.results"
 
 wait "$pid_checkpatch" || fatal "checkpatch failed"

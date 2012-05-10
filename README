@@ -169,7 +169,7 @@ sends it back to the patch submitter.
     the series one-by-one, compiling the kernel and checking that compilation
     was successful.
 
-* test-defconfigs
+* aiaiai-test-defconfigs
     If the patch-set changes a defconfig, this script verifies that the
     defconfig is changed properly ("make savedefconfig" was used).
 
@@ -188,7 +188,7 @@ To summarize:
  * 'test-patchset' is the central script
    * it runs 'checkpatch.pl'
    * it runs 'aiaiai-test-bisectability'
-   * it runs 'test-defconfigs'
+   * it runs 'aiaiai-test-defconfigs'
    * for every configuration specified by the user, it builds the kernel
      before and after the patch using the 'aiaiai-make-kernel' script, then
      compares the build log using the 'aiaiai-diff-log' script.
