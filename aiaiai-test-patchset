@@ -47,6 +47,10 @@ will make $PROG to test the patch in 3 configurations:
   2. defconfig "i386_defconfig" with ARCH=arm and the default CROSS_COMPILE
   3. defconfig "defconfig" with ARCH=s390 and CROSS_COMPILE=s390x-linux-
 
+By default, $PROG assumes that defconfigs are part of the
+kernel tree, unless --confdir option is specified, in which case the defconfig
+files will be searched for only in the specified directory.
+
 Options:
   -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
   -c, --commit-id=ID     the commit id to test against (default is the head of
@@ -55,6 +59,11 @@ Options:
   -w, --workdir=WDIR     path to the working directory where the kernel will
                          be built (default: a temporary directory is created
                          using mktemp);
+  -C, --confdir=CDIR     path to the directory containing the defconfig files
+                         (those you specify at the end); by default the
+                         defconfig files are assumed to be part of the
+                         <kernel-tree>; this option makes it possible to use
+                         stand-alone defconfig files instead;
   -p, --preserve         preserve all the temporary files - do not clean up;
       --bisectability    test bisectability;
       --sparse           check with sparse while building;
@@ -140,6 +149,7 @@ test_configuration()
 	local arch_opt=
 
 	[ -z "$arch" ] || arch_opt="-a $arch${cross:+",$cross"}"
+	[ -z "$confdir" ] || defconfig="$confdir/defconfig"
 
 	if [ -n "$bisectability" ]; then
 		# We share the same source tree with 'aiaiai-test-bisectability', so
@@ -169,7 +179,8 @@ test_configuration()
 	# objects.
 	if [ -n "$bisectability" ]; then
 		aiaiai-test-bisectability $verbose $preserve -j "$jobs" -c "$commit_id1" \
-			--dont-clone -i "$mbox" -w "$tmpdir" -o "$obj1" -- \
+			--dont-clone -i "$mbox" -w "$tmpdir" -o "$obj1" \
+			${confdir:+-C $confdir} -- \
 			"$cloned_kernel1" "$config" > "$tmpdir/$config.bisect.results" &
 		pid_bisect="$!"
 	fi
@@ -208,11 +219,12 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o j:,c:,i:,w:,p,K:,v,h --long jobs:,commit-id:,input:,workdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,keywords:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,K:,v,h --long jobs:,commit-id:,input:,workdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,keywords:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
 jobs=1
+confdir=
 commit_id1=HEAD
 mbox=
 bisectability=
@@ -241,6 +253,10 @@ while true; do
 	-w|--workdir)
 		mkdir $verbose -p -- "$2" >&2
 		tmpdir="$(mktemp --tmpdir="$(readlink -fv -- "$2")" -dt "$PROG.XXXX")"
+		shift
+		;;
+	-C|--confdir)
+		confdir="$(opt_check_dir "$1" "$2")"
 		shift
 		;;
 	-p|--preserve)

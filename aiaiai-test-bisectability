@@ -44,6 +44,10 @@ For example:
 means testing with defconfig "omap2plus_defconfig", ARCH=arm and
 CROSS_COMPILE=arm-eabi-.
 
+By default, $PROG assumes that the defconfig file is part of
+the kernel tree, unless --confdir option is specified, in which case the
+defconfig file will be searched for only in the specified directory.
+
 Options:
   -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
   -c, --commit-id=ID     the commit id to test against (default is the head of
@@ -53,6 +57,10 @@ Options:
   -o, --objdir=OBJDIR    locate all output files in OBJDIR, including .config
                          (O=OBJDIR Kbuild feature); if undefined - a temporary
                          directory is created using mktemp);
+  -C, --confdir=CDIR     path to the directory containing the defconfig file
+                         by default the defconfig file is assumed to be part of
+			 the <kernel-tree>; this option makes it possible to use
+                         a stand-alone defconfig file instead;
   -i, --input=MBOX       use the MBOX file instead of stdin;
   -w, --workdir=WDIR     path to the working directory where the kernel will;
                          be built (default: a temporary directory is created
@@ -80,7 +88,7 @@ compile_test()
 	# Apply the patch
 	apply_patch < "$file" || exit 0
 
-	aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt -D "$defconfig" \
+	aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt -D "$dconf" \
 		-O "$tmpdir/$defconfig.stdout.log" -E "$tmpdir/$defconfig.stderr.log" \
 		-- "$cloned_kernel" all
 	failed="$(tail -n1 -- "$tmpdir/$defconfig.stderr.log")"
@@ -104,7 +112,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o j:,c:,d,o:,i:,w:,p,v,h --long jobs:,commit-id:,dont-clone,objdir:,input:,workdir:,preserve,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o j:,c:,d,o:,C:,i:,w:,p,v,h --long jobs:,commit-id:,dont-clone,objdir:,confdir:,input:,workdir:,preserve,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -112,6 +120,7 @@ jobs=1
 commit_id=HEAD
 dont_clone=
 objdir=
+confdir=
 mbox=
 verbose=
 quiet="-q"
@@ -131,6 +140,10 @@ while true; do
 		;;
 	-o|--objdir)
 		objdir="$(readlink -fv -- "$2")"
+		shift
+		;;
+	-C|--confdir)
+		confdir="$(opt_check_dir "$1" "$2")"
 		shift
 		;;
 	-i|--input)
@@ -200,8 +213,11 @@ cd "$cloned_kernel"
 commit_id="$(git --git-dir="$kernel_tree/.git" rev-parse "$commit_id^{commit}")"
 git reset $quiet --hard "$commit_id" >&2
 
+dconf="$defconfig"
+[ -z "$confdir" ] || dconf="$confdir/$dconf"
+
 verbose "Building the base tree"
-aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt -D "$defconfig" \
+aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt -D "$dconf" \
 	-O "$tmpdir/$defconfig.stdout.log" -E "$tmpdir/$defconfig.stderr.log" \
 	-- "$cloned_kernel" all
 if build_failed "$tmpdir/$defconfig.stderr.log"; then

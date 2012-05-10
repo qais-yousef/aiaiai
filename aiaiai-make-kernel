@@ -28,7 +28,10 @@ Options:
   -o, --objdir=OBJDIR    locate all output files in OBJDIR, including .config
                          (O=OBJDIR Kbuild feature); if undefined - use the
                          source directory (<kernel-tree>);
-  -D, --defconfig        name of the defconfig to use for each target;
+  -D, --defconfig=CONF   name of the defconfig to use for each target; if the
+                         name contains a "/" character, it is interpreted as a
+                         send-alone defconfig file, otherwise it is assumed
+                         that CONF is part of the <kernel-tree>;
   -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
   -O, --stdout=FILE      redirect stdout of the build to FILE;
   -E, --stderr=FILE      redirect stderr of the build to FILE (note, if neither
@@ -84,8 +87,15 @@ make_target()
 	local target="$1"
 
 	if [ -n "$defconfig" ]; then
-		make ${arch:+ARCH="$arch"} ${cross:+CROSS_COMPILE="$cross"} \
-		${objdir:+O="$objdir"} -- "$defconfig"
+		if printf "%s" "$defconfig" | grep '/'; then
+			# The defconfig is a path to a stand-alone defconfig file
+			local dest=
+			cp "$defconfig" "${objdir:-$kernel_tree}/.config"
+		else
+			# The defconfig is part of the git tree
+			make ${arch:+ARCH="$arch"} ${cross:+CROSS_COMPILE="$cross"} \
+			${objdir:+O="$objdir"} -- "$defconfig"
+		fi
 	fi
 
 	aiaiai-locker $split -l "$lockfile" -c \
@@ -219,6 +229,7 @@ lockfile="$(mktemp -t "$PROG.lock.XXXX")"
 failed=
 for target in $@; do
 	verbose "Making target \"$target\" for \"$build_info\""
+
 	if [ -z "$split" ]; then
 		make_target "$target" > "$build_output" || failed=1
 		[ -z "$failed" ] || echo "FAILURE" >> "$build_output"
