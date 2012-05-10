@@ -5,7 +5,7 @@
 # License: GPLv2
 
 srcdir="$(readlink -ev -- ${0%/*}/..)"
-PATH="$srcdir:$srcdir/email:$srcdir/libshell:$PATH"
+PATH="$srcdir:$srcdir/email:$srcdir/external/libshell:$PATH"
 
 . shell-error
 . shell-signal
