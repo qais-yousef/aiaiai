@@ -181,7 +181,7 @@ sends it back to the patch submitter.
     A small helper script which decodes unreadable patch subjects encoded with
     RFC-2047 MIME encoding.
 
-* concat-mbox-files
+* aiaiai-concat-mboxes
     A little helper script which concatenates multiple mbox files into one.
 
 To summarize:
@@ -243,11 +243,11 @@ Here are some examples.
 
 Note, the 'test-patchset' script accepts one mbox file via stdio or the '-i'
 option. If you have several files belonging to one patch-set and you want to
-test them all, you need to concatenate them. Use the 'concat-mbox-files' script
-for this. E.g., if you have '01.mbox' and '02.mbox' comprising a patch-set,
-you can test do like this:
+test them all, you need to concatenate them. Use the 'aiaiai-concat-mboxes'
+script for this. E.g., if you have '01.mbox' and '02.mbox' comprising a
+patch-set, you can test do like this:
 
-$ concat-mbox-files 01.mbox 02.mbox | test-patchset ....
+$ aiaiai-concat-mboxes 01.mbox 02.mbox | test-patchset ....
 
 Patches generated with 'git format-patch' are also mbox files so you can test
 them with 'test-patchset' as well. Just remember to use the '--thread' option
@@ -255,7 +255,7 @@ to make 'git format-patch' generate "Message-Id:" and "In-Reply-To:" headers.
 For example:
 
 $ git format-patch --thread HEAD~10
-$ concat-mbox-files 00* | test-patchset ...
+$ aiaiai-concat-mboxes 00* | test-patchset ...
 
 I usually run 'test-patchset' with the lowest priority in order to make sure
 the machine is still usable for other things:
