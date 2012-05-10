@@ -163,10 +163,6 @@ sends it back to the patch submitter.
     so the build logs of the pre-patched and patched kernels will contain the
     same line and the diff won't show anything.
 
-* strip-log
-    A helper script which strips things like CRC and path prefixes in order to
-    prepare build logs to be compared with 'aiaiai-diff-log'.
-
 * test-bisectability
     Accepts a patch-set as the input and checks that the patch-set does not
     break compilation at any step. This is achieved by applying every patch in
@@ -197,9 +193,8 @@ To summarize:
    * The "verbose" contents is printed to stderr
    * Many of the jobs above are run in parallel
 
-The 'aiaiai-diff-log' script which compares 2 logs, uses 'strip-log' to strip
-path prefixes and other things which may vary between builds. And it uses the
-'remap-log' tool for comparing 2 build logs the smart way.
+The 'aiaiai-diff-log' script which compares 2 logs. It uses the 'remap-log'
+tool for comparing 2 build logs the smart way.
 
 
 2 Using Aiaiai locally
