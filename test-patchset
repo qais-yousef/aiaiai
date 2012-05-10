@@ -365,8 +365,9 @@ wait "$pid_checkpatch" || fatal "checkpatch failed"
 
 # Print the results
 
+print_separator
 echo "Tested the patch(es) on top of the following commit:"
-git --no-pager log -1 "$commit_id1"
+git --no-pager log -1 --oneline "$commit_id1"
 
 for defconfig in $defconfigs; do
 	log1="$tmpdir1/$defconfig.stderr.log"
