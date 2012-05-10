@@ -19,14 +19,14 @@ Ctrl-C interruption, or error (unless -p option is specified).
 
 Do not forget to compile the 'remap-log' and 'serialize-log' tools before using
 Aiaiai:
-$ make -C tools
+$ make -C external
 
 The layout of the repository.
 
 * aiaiai/email/
     All the scripts related to emails handling. If you use Aiaiai locally
     you do not need these scripts.
-* aiaiai/tools/
+* aiaiai/external/
     Some external tools and files which we use are stored here.
 * aiaiai/
     The root repository directory contains the scripts which do all the
@@ -103,10 +103,10 @@ sends it back to the patch submitter.
     change its behavior, e.g., you can select whether you want to run
     sparse/smatch/cppcheck/coccinelle tools or not.
 
-    'aiaiai-make-kernel' utilizes the 'tools/serialize-log' utility to make sure
-    the build logs of parallel builds are not scrambled and stay readable.
+    'aiaiai-make-kernel' utilizes the 'external/serialize-log' utility to make
+    sure the build logs of parallel builds are not scrambled and stay readable.
 
-* tools/serialize-log
+* external/serialize-log
     This utility was inspired by Eric Melski's blog-post I found in the Internet.
     We use this tool to make Linux kernel build logs saner than parallel build
     produces (e.g., "make -j 20"). Indeed, parallel make scrambles all the
@@ -128,14 +128,14 @@ sends it back to the patch submitter.
 
 * aiaiai-diff-log
     Compares 2 build logs and provides the differences. This script used the
-    'tools/remap-log' tool to re-map line numbers in the warnings of the first
-    build log to correspond to line numbers in the second build-log.
+    'external/remap-log' tool to re-map line numbers in the warnings of the
+    first build log to correspond to line numbers in the second build-log.
 
 * aiaiai-diff-log-helper
     A helper script for aiaiai-diff-log which sorts 2 build logs and compares
     them.  Written in Python because the shell version was too slow.
 
-* tools/remap-log
+* external/remap-log
     This is a small C program originally written by Al Viro which helps
     comparing 2 build logs by remapping line numbers. Roughly speaking,
     'remap-log' takes the build log of the pre-patched kernel and the patch and
@@ -208,7 +208,7 @@ tool for comparing 2 build logs the smart way.
 
 If you just want to test a patch-set locally, you should use the
 'aiaiai-test-patchset' script. Do not forget to build the remap-log.c file in
-the 'tools' subdirectory.
+the 'external' subdirectory.
 
 Here are some examples.
 
@@ -310,7 +310,7 @@ sparse which come from smatch and just sparse. I use the latter one.
 Coccinelle or "spatch" is a great semantic patch tool, very useful on its own.
 The Linux kernel contains a bunch of coccinelle semantic patches which catch
 various types of API abuses etc. We store a copy of these scripts in the
-"tools" subdirectory.
+"external" subdirectory.
 
 The "spatch" tool is part of distributions like Debian and Fedora, so you most
 probably just need to install the corresponding package. The binary program is

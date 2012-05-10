@@ -5,7 +5,7 @@
 # License: GPLv2
 
 srcdir="$(readlink -ev -- ${0%/*})"
-export PATH="$srcdir:$srcdir/libshell:$srcdir/tools:$PATH"
+export PATH="$srcdir:$srcdir/libshell:$srcdir/external:$PATH"
 
 . shell-error
 . shell-args
