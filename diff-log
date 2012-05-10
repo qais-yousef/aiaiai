@@ -179,7 +179,7 @@ remap-log -o "" -p "line " "$tmpdir/map" < "$input_log1" > "$log1.remapped"
 
 rename_log "$log1.remapped"
 
-diff-log-helper "$log1.remapped" "$input_log2" "$tmpdir/diff"
+aiaiai-diff-log-helper "$log1.remapped" "$input_log2" "$tmpdir/diff"
 
 cat "$tmpdir/diff"
 

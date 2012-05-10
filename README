@@ -129,7 +129,7 @@ sends it back to the patch submitter.
     'tools/remap-log' tool to re-map line numbers in the warnings of the first
     build log to correspond to line numbers in the second build-log.
 
-* diff-log-helper
+* aiaiai-diff-log-helper
     A helper script for diff-log which sorts 2 build logs and compares them.
     Written in Python because the shell version was too slow.
 
