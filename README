@@ -9,7 +9,7 @@ It is important to know that all the scripts are written so that:
  * all the debugging and verbose (-v) cruft is printed to stderr
  * all the user-friendly output is printed to stdout
 
-Thus, if you for example run "./test-patchset -v .... 2>log", then the
+Thus, if you for example run "./aiaiai-test-patchset -v .... 2>log", then the
 "log" file will contain all the unreadable debugging cruft and the nice
 output will be visible on the console.
 
@@ -30,7 +30,7 @@ The layout of the repository.
     Some external tools and files which we use are stored here.
 * aiaiai/
     The root repository directory contains the scripts which do all the
-    patch checking work. The central script is 'test-patchset' which
+    patch checking work. The central script is 'aiaiai-test-patchset' which
     uses all the other scripts as helpers.
 
 Let's briefly review the contents of the repository.
@@ -62,8 +62,8 @@ Let's briefly review the contents of the repository.
 * email/email-test-patchset
     This script parses the incoming e-mail (in mbox format), finds out which
     kernel tree has to be used, sends a notification to the sender, runs
-    the 'test-patchset' script with the right command-line arguments, and
-    sends the results of 'test-patchset' back to the patch submitter.
+    the 'aiaiai-test-patchset' script with the right command-line arguments, and
+    sends the results of 'aiaiai-test-patchset' back to the patch submitter.
 
 * email/aiaiai.cfg
     This is an example of 'email-test-patchset' configuration file. It
@@ -79,9 +79,9 @@ mbox (unless there are already too many jobs, in which case it will wait).
 
 The 'email-test-patchset' will parse the patch-set, find out which kernel
 it has to be tested against using the configuration file, send a notification
-e-mail to the patch sender, and execute the 'test-patchset' script.
+e-mail to the patch sender, and execute the 'aiaiai-test-patchset' script.
 
-The 'test-patchset' script does all the testing work and outputs the
+The 'aiaiai-test-patchset' script does all the testing work and outputs the
 test results to stdout. 'email-test-patchset' captures the output and
 sends it back to the patch submitter.
 
@@ -89,12 +89,12 @@ sends it back to the patch submitter.
 1.2 Non-e-mail scripts
 ~~~~~~~~~~~~~~~~~~~~~~
 
-* test-patchset
-    The central script which tests a patch-set is 'test-patchset'. You should
-    use it if you want to test your patches locally. It accepts patches in the
-    mbox format. You should specify various input parameters like the path to
-    the kernel to test against, the commit id to test against, which tests to
-    run, etc.
+* aiaiai-test-patchset
+    The central script which tests a patch-set is 'aiaiai-test-patchset'. You
+    should use it if you want to test your patches locally. It accepts patches
+    in the mbox format. You should specify various input parameters like the
+    path to the kernel to test against, the commit id to test against, which
+    tests to run, etc.
 
 * aiaiai-make-kernel
     Low-level scripts which builds the kernel. It has several switches which
@@ -185,7 +185,7 @@ sends it back to the patch submitter.
    patches.
 
 To summarize:
- * 'test-patchset' is the central script
+ * 'aiaiai-test-patchset' is the central script
    * it runs 'checkpatch.pl'
    * it runs 'aiaiai-test-bisectability'
    * it runs 'aiaiai-test-defconfigs'
@@ -204,9 +204,9 @@ tool for comparing 2 build logs the smart way.
 2 Using Aiaiai locally
 ~~~~~~~~~~~~~~~~~~~~~~
 
-If you just want to test a patch-set locally, you should use the 'test-patchset'
-script. Do not forget to build the remap-log.c file in the 'tools'
-subdirectory.
+If you just want to test a patch-set locally, you should use the
+'aiaiai-test-patchset' script. Do not forget to build the remap-log.c file in
+the 'tools' subdirectory.
 
 Here are some examples.
 
@@ -215,8 +215,8 @@ Here are some examples.
    defconfig, the architecture is i386 (translates to 'make ARCH=i386'). Use
    16 jobs.
 
-   cat p.mbox | ./test-patchset --bisectability --sparse --smatch --cppcheck \
-       --coccinelle -j 16 -c origin/next \
+   cat p.mbox | ./aiaiai-test-patchset --bisectability --sparse --smatch \
+       --cppcheck --coccinelle -j 16 -c origin/next \
        /<path>/linux-vfs i386_defconfig,i386
 
 2. Test a patch or a patch-set p.mbox against the linux-omap kernel tree,
@@ -224,8 +224,8 @@ Here are some examples.
    'arm' architecture and 'arm-eabi-' cross-compiler prefix (translates to
    'make CROSS_COMPILE=arm-eabi-').
 
-   cat p.mbox | ./test-patchset --bisectability --sparse --smatch --cppcheck \
-       --coccinelle -j 16 -c master \
+   cat p.mbox | ./aiaiai-test-patchset --bisectability --sparse --smatch \
+       --cppcheck --coccinelle -j 16 -c master \
        /<path>/linux-omap omap2plus_defconfig,arm,arm-eabi-
 
 3. If you are a maintainer you may want to test patches for more than one
@@ -233,37 +233,37 @@ Here are some examples.
    E.g., to test p.mbox against both i386_defconfig (Intel i386) and
    omap2plus_defconfig (ARM-based SoC), you can run:
 
-   cat p.mbox | ./test-patchset --bisectability --sparse --smatch --cppcheck \
-       --coccinelle -j 16 -c master /<path>/linux-my \
+   cat p.mbox | ./aiaiai-test-patchset --bisectability --sparse --smatch \
+       --cppcheck --coccinelle -j 16 -c master /<path>/linux-my \
        i386_defconfig,i386 omap2plus_defconfig,arm,arm-eabi-
 
    IOW, just specify defconfigs, architectures, and cross-compiler prefixes at
    the end.
 
-Note, the 'test-patchset' script accepts one mbox file via stdio or the '-i'
-option. If you have several files belonging to one patch-set and you want to
-test them all, you need to concatenate them. Use the 'aiaiai-concat-mboxes'
+Note, the 'aiaiai-test-patchset' script accepts one mbox file via stdio or the
+'-i' option. If you have several files belonging to one patch-set and you want
+to test them all, you need to concatenate them. Use the 'aiaiai-concat-mboxes'
 script for this. E.g., if you have '01.mbox' and '02.mbox' comprising a
 patch-set, you can test do like this:
 
-$ aiaiai-concat-mboxes 01.mbox 02.mbox | test-patchset ....
+$ aiaiai-concat-mboxes 01.mbox 02.mbox | aiaiai-test-patchset ....
 
 Patches generated with 'git format-patch' are also mbox files so you can test
-them with 'test-patchset' as well. Just remember to use the '--thread' option
-to make 'git format-patch' generate "Message-Id:" and "In-Reply-To:" headers.
-For example:
+them with 'aiaiai-test-patchset' as well. Just remember to use the '--thread'
+option to make 'git format-patch' generate "Message-Id:" and "In-Reply-To:"
+headers. For example:
 
 $ git format-patch --thread HEAD~10
-$ aiaiai-concat-mboxes 00* | test-patchset ...
+$ aiaiai-concat-mboxes 00* | aiaiai-test-patchset ...
 
-I usually run 'test-patchset' with the lowest priority in order to make sure
-the machine is still usable for other things:
+I usually run 'aiaiai-test-patchset' with the lowest priority in order to make
+sure the machine is still usable for other things:
 
-$ nice -n19 ionice -c3 test-patchset ...
+$ nice -n19 ionice -c3 aiaiai-test-patchset ...
 
 And for the kernel trees I test frequently against, I usually have a helper
-script so that I do not have to type the 'test-patchset' options over and over
-again.
+script so that I do not have to type the 'aiaiai-test-patchset' options over
+and over again.
 
 
 3 Dependencies
@@ -351,10 +351,10 @@ and conventions. Below are some of them.
 
 * Stdout is used only for user-friendly stuff. In many cases it is assumed that
   the higher-level scripts just capture the stdout of lower-level scripts and
-  provide that to the user. For example, 'test-patchset' captures stdout of the
-  'aiaiai-test-bisectability' scripts and uses it for reporting to the user. In
-  turn, the 'email-test-patchset' script captures stdout of the 'test-patchset'
-  script and sends it back to the user via e-mail.
+  provide that to the user. For example, 'aiaiai-test-patchset' captures stdout
+  of the 'aiaiai-test-bisectability' scripts and uses it for reporting to the
+  user. In turn, the 'email-test-patchset' script captures stdout of the
+  'aiaiai-test-patchset' script and sends it back to the user via e-mail.
 
 * Stderr is use for all the debugging, verbose and additional prints.
 
