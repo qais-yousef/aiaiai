@@ -72,9 +72,9 @@ Options:
       --coccinelle       check with coccinelle (spatch) while building;
   -Q  --quick-fixes=F    sometimes it is necessary to carry out-of-tree patches
                          like quick build fixes and this option allows to pass
-			 an mbox file with quick fixes which will be applied
-			 first and the user patch-set will be tested on top of
-			 the fixes;
+                         an mbox file with quick fixes which will be applied
+                         first and the user patch-set will be tested on top of
+                         the fixes;
   -K  --keywords=FILE    match keywords from FILE against the patch
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
