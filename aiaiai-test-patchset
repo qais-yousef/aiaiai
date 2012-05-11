@@ -149,7 +149,7 @@ test_configuration()
 	local arch_opt=
 
 	[ -z "$arch" ] || arch_opt="-a $arch${cross:+",$cross"}"
-	[ -z "$confdir" ] || defconfig="$confdir/defconfig"
+	[ -z "$confdir" ] || defconfig="$confdir/$defconfig"
 
 	if [ -n "$bisectability" ]; then
 		# We share the same source tree with 'aiaiai-test-bisectability', so
