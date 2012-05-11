@@ -90,12 +90,15 @@ make_target()
 		if printf "%s" "$defconfig" | grep '/'; then
 			# The defconfig is a path to a stand-alone defconfig file
 			# FIXME: ugly hack!
-			make ${arch:+ARCH="$arch"} ${cross:+CROSS_COMPILE="$cross"} \
-			${objdir:+O="$objdir"} KCONFIG_ALLCONFIG="$defconfig" -- alldefconfig
+			make -C $kernel_tree ${arch:+ARCH="$arch"} \
+				${cross:+CROSS_COMPILE="$cross"} \
+				${objdir:+O="$objdir"} \
+				KCONFIG_ALLCONFIG="$defconfig" -- alldefconfig
 		else
 			# The defconfig is part of the git tree
-			make ${arch:+ARCH="$arch"} ${cross:+CROSS_COMPILE="$cross"} \
-			${objdir:+O="$objdir"} -- "$defconfig"
+			make -C $kernel_tree ${arch:+ARCH="$arch"} \
+				${cross:+CROSS_COMPILE="$cross"} \
+				${objdir:+O="$objdir"} -- "$defconfig"
 		fi
 	fi
 
