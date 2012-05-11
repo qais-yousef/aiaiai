@@ -70,6 +70,11 @@ Options:
       --smatch           check with smatch while building;
       --cppcheck         check with cppcheck while building;
       --coccinelle       check with coccinelle (spatch) while building;
+  -Q  --quick-fixes=F    sometimes it is necessary to carry out-of-tree patches
+                         like quick build fixes and this option allows to pass
+			 an mbox file with quick fixes which will be applied
+			 first and the user patch-set will be tested on top of
+			 the fixes;
   -K  --keywords=FILE    match keywords from FILE against the patch
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
@@ -219,7 +224,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,K:,v,h --long jobs:,commit-id:,input:,workdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,keywords:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,Q:,K:,v,h --long jobs:,commit-id:,input:,workdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,quick-fixes:,keywords:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -232,6 +237,7 @@ sparse=
 smatch=
 cppcheck=
 coccinelle=
+quick_fixes=
 keywords=
 verbose=
 quiet="-q"
@@ -261,6 +267,10 @@ while true; do
 		;;
 	-p|--preserve)
 		preserve="--preserve"
+		;;
+	-Q|--quick-fixes)
+		quick_fixes="$(opt_check_read "$1" "$2")"
+		shift
 		;;
 	--bisectability)
 		bisectability="--bisectability"
@@ -325,6 +335,15 @@ commit_id1="$(git --git-dir="$kernel_tree/.git" rev-parse "$commit_id1^{commit}"
 verbose "Base commit: $(git log -1 --oneline "$commit_id1")"
 git reset $quiet --hard "$commit_id1" >&2
 
+# Apply quick fixes
+if [ -n "$quick_fixes" ]; then
+	verbose "Applying quick fixes from $quick_fixes"
+	git apply "$quick_fixes"
+	git add -A
+	git commit -m "Quick fixes - applied by aiaiai"
+	commit_id1="$(git rev-parse "HEAD^{commit}")"
+fi
+
 # Apply the patch
 apply_patch < "$mbox" || exit 0
 
@@ -361,7 +380,6 @@ git diff --numstat $commit_id1..$commit_id2 |
 cloned_kernel1="$tmpdir1/src"
 git clone "${verbose:--q}" "$cloned_kernel2" "$cloned_kernel1" >&2
 cd "$cloned_kernel1"
-git reset $quiet --hard "$commit_id1" >&2
 
 # Main loop for testing all configurations
 for defconfig in $defconfigs; do
@@ -379,8 +397,8 @@ wait "$pid_checkpatch" || fatal "checkpatch failed"
 
 # Print the results
 
-echo "Tested the patch(es) on top of the following commit:"
-git --no-pager log -1 --oneline "$commit_id1"
+echo "Tested the patch(es) on top of the following commits:"
+git --no-pager log -4 --oneline "$commit_id1"
 
 for defconfig in $defconfigs; do
 	log1="$tmpdir1/$defconfig.stderr.log"
