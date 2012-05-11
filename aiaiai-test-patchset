@@ -338,9 +338,9 @@ git reset $quiet --hard "$commit_id1" >&2
 # Apply quick fixes
 if [ -n "$quick_fixes" ]; then
 	verbose "Applying quick fixes from $quick_fixes"
-	git apply "$quick_fixes"
-	git add -A
-	git commit $quiet -m "Quick fixes - applied by aiaiai"
+	git apply "$quick_fixes" >&2
+	git add -A >&2
+	git commit $quiet -m "Quick fixes - applied by aiaiai" >&2
 	commit_id1="$(git rev-parse "HEAD^{commit}")"
 fi
 
