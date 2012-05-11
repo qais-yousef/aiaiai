@@ -32,7 +32,7 @@ The configuration is specified as follows:
 
 where
 
-  * "defconfig" is the name kernel defconfig file to test
+  * "defconfig" is the name of the kernel defconfig file to test
   * "arch" is the architecture (translates to Kbuild's ARCH variable value)
   * "cross" is the cross-compiler prefix (translates to Kbuild's CROSS_COMPILE
      variable value).
@@ -62,7 +62,7 @@ Options:
 			 the <kernel-tree>; this option makes it possible to use
                          a stand-alone defconfig file instead;
   -i, --input=MBOX       use the MBOX file instead of stdin;
-  -w, --workdir=WDIR     path to the working directory where the kernel will;
+  -w, --workdir=WDIR     path to the working directory where the kernel will
                          be built (default: a temporary directory is created
                          using mktemp);
   -p, --preserve         preserve all the temporary files - do not clean up;
@@ -200,7 +200,7 @@ if [ "$patch_cnt" -le 1 ]; then
 	exit 0;
 fi
 
-verbose "Bisecting $patch_cnt patches for cofiguration \"$defconfig\""
+verbose "Bisecting $patch_cnt patches for configuration \"$defconfig\""
 
 if [ -z "$dont_clone" ]; then
 	cloned_kernel="$tmpdir/src"
