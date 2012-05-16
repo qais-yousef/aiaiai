@@ -133,7 +133,7 @@ mkfifo -- "$fifo"
 # We execute the below command as a separate process - it will run the
 # validator for every file name read from the fifo.
 tail -f -- "$fifo" | xargs -I{} -P"$bigjobs" -- \
-	email-dispatcher-helper $verbose -- "$in_fifo/{}" "$tmpdir/STOP" \
+	aiaiai-email-dispatcher-helper $verbose -- "$in_fifo/{}" "$tmpdir/STOP" \
 				      "$queuedir" "$validator" >&2 &
 
 # Loop forever, wait for new files in the queue directory using inotify and

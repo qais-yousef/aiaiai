@@ -312,12 +312,12 @@ fi
 
 # Test the path (or patch-set)
 message "Test configs \"$defconfigs\" branch \"$branch\" of \"$kernel_dir\""
-test-patchset $verbose $preserve $bisectability $sparse $smatch $coccinelle \
+aiaiai-test-patchset $verbose $preserve $bisectability $sparse $smatch $coccinelle \
 	-i "$mbox" -j "$jobs" -c "$branch" -w "$tmpdir" \
 	${keywords:+-K "$keywords"} -- \
 	"$kernel_dir" "$defconfigs" > "$tmpdir/test-patchset.log" ||
 {
-	message "test-patchset failed"
+	message "aiaiai-test-patchset failed"
 	compose_email <<EOF
 Sorry, but an internal error happened. Please, send a bug report to
 "$adminname" <$adminmail>.
