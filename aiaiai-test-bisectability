@@ -65,6 +65,9 @@ Options:
   -w, --workdir=WDIR     path to the working directory where the kernel will
                          be built (default: a temporary directory is created
                          using mktemp);
+  -M, --kmake-opts       additional options to append to the final kernel
+                         compilation 'make' command
+                         (e.g., W=2 KALLSYMS_EXTRA_PASS=1)
   -p, --preserve         preserve all the temporary files - do not clean up;
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
@@ -90,7 +93,7 @@ compile_test()
 
 	aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt -D "$dconf" \
 		-O "$tmpdir/$defconfig.stdout.log" -E "$tmpdir/$defconfig.stderr.log" \
-		-- "$cloned_kernel" all
+		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel" all
 	failed="$(tail -n1 -- "$tmpdir/$defconfig.stderr.log")"
 	if [ "$failed" = "FAILURE" ]; then
 		# Failed to build the base commit, report and exit
@@ -112,7 +115,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o j:,c:,d,o:,C:,i:,w:,p,v,h --long jobs:,commit-id:,dont-clone,objdir:,confdir:,input:,workdir:,preserve,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o j:,c:,d,o:,C:,i:,w:,M:,p,v,h --long jobs:,commit-id:,dont-clone,objdir:,confdir:,input:,workdir:,kmake-opts:,preserve,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -122,6 +125,7 @@ dont_clone=
 objdir=
 confdir=
 mbox=
+kmake_opts=
 verbose=
 quiet="-q"
 
@@ -153,6 +157,10 @@ while true; do
 	-w|--workdir)
 		mkdir $verbose -p -- "$2" >&2
 		tmpdir="$(mktemp --tmpdir="$(readlink -fv -- "$2")" -dt "$PROG.XXXX")"
+		shift
+		;;
+	-M|--kmake-opts)
+		kmake_opts="$2"
 		shift
 		;;
 	-p|--preserve)
@@ -219,7 +227,7 @@ dconf="$defconfig"
 verbose "Building the base tree"
 aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt -D "$dconf" \
 	-O "$tmpdir/$defconfig.stdout.log" -E "$tmpdir/$defconfig.stderr.log" \
-	-- "$cloned_kernel" all
+	${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel" all
 if build_failed "$tmpdir/$defconfig.stderr.log"; then
 	# Failed to build the base commit, report and exit
 	build_failure "$defconfig" "$commit_id" < "$tmpdir/$defconfig.stderr.log"

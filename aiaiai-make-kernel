@@ -47,6 +47,9 @@ Options:
       --cppcheck         check with cppcheck while building;
       --coccinelle       check with coccinelle (spatch) while building;
       --check-only=FILE  check only files listed in FILE;
+  -M, --kmake-opts       additional options to append to the final kernel
+                         compilation 'make' command
+                         (e.g., W=2 KALLSYMS_EXTRA_PASS=1)
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
 EOF
@@ -106,9 +109,9 @@ make_target()
 		"make $keep_going -j $jobs -C $kernel_tree ${arch:+ARCH="$arch"} \
 		${cross:+CROSS_COMPILE="$cross"} ${objdir:+O="$objdir"} \
 		CHECK=\"aiaiai-checker $sparse $smatch $cppcheck $coccinelle $check_only --\" \
-		C=$check W=1 \
 		KCFLAGS='-Wno-missing-field-initializers -Wno-sign-compare' \
-		SHELL=\"aiaiai-locker $split -l $lockfile\" $target"
+		C=$check W=1 SHELL=\"aiaiai-locker $split -l $lockfile\" \
+		$kmake_opts $target"
 }
 
 lockfile=
@@ -128,7 +131,7 @@ set_cleanup_handler cleanup_handler
 
 program_required "aiaiai-locker"
 
-TEMP=`getopt -n $PROG -o o:,D:,j:,O:,E:,k:,a:,v,h --long objdir:,defconfig:,jobs:,stdout:,stderr:,keep-going:,arch:,sparse,smatch,cppcheck,coccinelle,check-only:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o o:,D:,j:,O:,E:,k:,a:,M:,v,h --long objdir:,defconfig:,jobs:,stdout:,stderr:,keep-going:,arch:,sparse,smatch,cppcheck,coccinelle,check-only:,kmake-opts:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -144,6 +147,7 @@ cppcheck=
 coccinelle=
 check_only=
 check=0
+kmake_opts=
 verbose=
 
 while true; do
@@ -199,6 +203,10 @@ while true; do
 		;;
 	--check-only)
 		check_only="--check-only $(opt_check_read "$1" "$2")"
+		shift
+		;;
+	-M|--kmake-opts)
+		kmake_opts="$2"
 		shift
 		;;
 	-v|--verbose) verbose=-v

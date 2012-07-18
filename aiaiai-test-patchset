@@ -76,6 +76,9 @@ Options:
                          first and the user patch-set will be tested on top of
                          the fixes;
   -K  --keywords=FILE    match keywords from FILE against the patch
+  -M, --kmake-opts       additional options to append to the final kernel
+                         compilation 'make' command
+                         (e.g., W=2 KALLSYMS_EXTRA_PASS=1)
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
 EOF
@@ -176,7 +179,8 @@ test_configuration()
 
 	aiaiai-make-kernel $verbose $sparse $smatch $cppcheck $coccinelle -o "$obj1" \
 		--check-only "$mod_files" -j "$jobs" $arch_opt -D "$defconfig" \
-		-O "$log1.stdout.log" -E "$log1.stderr.log" -- "$cloned_kernel1" all
+		-O "$log1.stdout.log" -E "$log1.stderr.log" \
+		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel1" all
 
 	verbose "Done with non-patched kernel"
 
@@ -185,7 +189,7 @@ test_configuration()
 	if [ -n "$bisectability" ]; then
 		aiaiai-test-bisectability $verbose $preserve -j "$jobs" -c "$commit_id1" \
 			--dont-clone -i "$mbox" -w "$tmpdir" -o "$obj1" \
-			${confdir:+-C $confdir} -- \
+			${confdir:+-C $confdir} ${kmake_opts:+-M "$kmake_opts"} -- \
 			"$cloned_kernel1" "$config" > "$tmpdir/$config.bisect.results" &
 		pid_bisect="$!"
 	fi
@@ -197,7 +201,8 @@ test_configuration()
 
 	aiaiai-make-kernel $verbose $sparse $smatch $cppcheck $coccinelle -o "$obj2" \
 		--check-only "$mod_files" -j "$jobs" $arch_opt -D "$defconfig" \
-		-O "$log2.stdout.log" -E "$log2.stderr.log" -- "$cloned_kernel2" all
+		-O "$log2.stdout.log" -E "$log2.stderr.log" \
+		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel2" all
 
 	verbose "Done with patched kernel"
 
@@ -224,7 +229,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,Q:,K:,v,h --long jobs:,commit-id:,input:,workdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,quick-fixes:,keywords:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,Q:,K:,M:,v,h --long jobs:,commit-id:,input:,workdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,quick-fixes:,keywords:,kmake-opts:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -239,6 +244,7 @@ cppcheck=
 coccinelle=
 quick_fixes=
 keywords=
+kmake_opts=
 verbose=
 quiet="-q"
 
@@ -289,6 +295,10 @@ while true; do
 		;;
 	-K|--keywords)
 		keywords="$(opt_check_read "$1" "$2")"
+		shift
+		;;
+	-M|--kmake-opts)
+		kmake_opts="$2"
 		shift
 		;;
 	-v|--verbose)
