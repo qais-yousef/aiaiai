@@ -170,7 +170,7 @@ difflog="$tmpdir/defconfigs.log.diff"
 for defconfig in $defconfigs; do
 	config="$(leave_first "$defconfig")"
 	arch="$(strip_first "$defconfig")";
-	check "$config" "$arch" "$tmpdir/correct-$defconfig"
+	check "$config" "$arch" "$tmpdir/correct-${defconfig##*/}"
 done
 
 git reset $quiet --hard "$commit_id" >&2
@@ -178,10 +178,11 @@ git reset $quiet --hard "$commit_id" >&2
 for defconfig in $defconfigs; do
 	config="$(leave_first "$defconfig")"
 	arch="$(strip_first "$defconfig")";
-	check "$config" "$arch" "$tmpdir/patched-$defconfig"
-	diff --label "patched-$defconfig" --label "correct-$defconfig" -U0 \
-		"$tmpdir/patched-$defconfig" \
-		"$tmpdir/correct-$defconfig" >> "$difflog" ||:
+	check "$config" "$arch" "$tmpdir/patched-${defconfig##*/}"
+	diff --label "patched-${defconfig##*/}" \
+	     --label "correct-${defconfig##*/}" -U0 \
+		"$tmpdir/patched-${defconfig##*/}" \
+		"$tmpdir/correct-${defconfig##*/}" >> "$difflog" ||:
 done
 
 if [ -s "$difflog" ]; then
