@@ -10,10 +10,17 @@
 # Usage: program_required <program_name>
 program_required()
 {
-	local prg="$1"
+	local prg="$1"; shift
+	local msg="$1"; shift
 
-	command -v "$prg" >/dev/null 2>&1 || \
-		fatal "Program \"$prg\" is required but not found in PATH"
+	if ! command -v "$prg" >/dev/null 2>&1; then
+		message "Program \"$prg\" is required but not found in PATH"
+		if [ -n "$msg" ]; then
+			fatal "$msg"
+		else
+			exit 1
+		fi
+	fi
 }
 
 # Fetch the first occurrence of an mbox header from a file
@@ -21,6 +28,8 @@ program_required()
 fetch_header()
 {
 	local hdr="$1"
+
+	program_required "formail" ""
 
 	# Take only the first occurrence of the header
 	formail -z -c -x "$hdr:" | head -n1 | aiaiai-decode-rfc-2047
@@ -40,6 +49,8 @@ fetch_header_or_die()
 fetch_all_headers()
 {
 	local hdr="$1"
+
+	program_required "formail" ""
 
 	# Take only the first occurrence of the header
 	formail -s sh -c "formail -z -c -x \"$hdr:\" | head -n1" | aiaiai-decode-rfc-2047
@@ -92,6 +103,8 @@ subject_check()
 apply_patch()
 {
 	local am cmt
+
+	program_required "patch" ""
 
 	cmt="$(git rev-parse "HEAD^{commit}")"
 

@@ -129,8 +129,6 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-program_required "aiaiai-locker"
-
 TEMP=`getopt -n $PROG -o o:,D:,j:,O:,E:,k:,a:,M:,v,h --long objdir:,defconfig:,jobs:,stdout:,stderr:,keep-going:,arch:,sparse,smatch,cppcheck,coccinelle,check-only:,kmake-opts:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
@@ -224,6 +222,13 @@ while true; do
 done
 
 [ "$#" -ge 2 ] || fatal 'Insufficient arguments'
+
+program_required "aiaiai-locker" \
+		 "You probably did not compile it, run 'make' in the topmost aiaiai source code directory"
+program_required "${cross}gcc" \
+		 "You can download various cross-compilers from http://kernel.org/pub/tools/crosstool"
+program_required "make" ""
+
 kernel_tree="$(opt_check_dir "kernel-tree" "$1")"; shift
 build_info="$kernel_tree${objdir:+ (O="$objdir")}"
 

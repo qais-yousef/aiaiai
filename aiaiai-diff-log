@@ -129,8 +129,6 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-program_required "remap-log"
-
 TEMP=`getopt -n $PROG -o w:,p,v,h --long workdir:,preserve,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
@@ -162,6 +160,9 @@ while true; do
 done
 
 [ "$#" = 3 ] || fatal 'Insufficient or too many arguments.'
+
+program_required "remap-log" \
+		 "You probably did not compile it, run 'make' in the topmost aiaiai source code directory"
 
 patch="$(readlink -ev -- "$1")"; shift
 input_log1="$(readlink -ev -- "$1")"; shift

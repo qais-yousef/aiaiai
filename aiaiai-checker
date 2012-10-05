@@ -106,19 +106,19 @@ while true; do
 	case "$1" in
 	--sparse)
 		run_sparse=1
-		program_required "sparse"
+		program_required "sparse" "See section 'sparse' in doc/README"
 		;;
 	--smatch)
 		run_smatch=1
-		program_required "smatch"
+		program_required "smatch" "See section 'smatch' in doc/README"
 		;;
 	--cppcheck)
 		run_cppcheck=1
-		program_required "cppcheck"
+		program_required "cppcheck" "Usually Linux distribution provide a cppcheck package"
 		;;
 	--coccinelle)
 		run_coccinelle=1
-		program_required "spatch"
+		program_required "spatch" "Usually Linux distribution provide a 'spatch' or 'coccinelle' package"
 		;;
 	--check-only)
 		check_only="$(opt_check_read "$1" "$2")"
@@ -135,6 +135,9 @@ while true; do
 	esac
 	shift
 done
+
+program_required "aiaiai-locker" \
+		 "You probably did not compile it, run 'make' in the topmost aiaiai source code directory"
 
 tmpdir="$(mktemp -dt "$PROG.XXXX")"
 file_to_check="$(get_file_to_check "$@")"

@@ -283,15 +283,19 @@ while true; do
 		;;
 	--sparse)
 		sparse="--sparse"
+		program_required "sparse" "See section 'sparse' in doc/README"
 		;;
 	--smatch)
 		smatch="--smatch"
+		program_required "smatch" "See section 'smatch' in doc/README"
 		;;
 	--cppcheck)
 		cppcheck="--cppcheck"
+		program_required "cppcheck" "Usually Linux distribution provide a cppcheck package"
 		;;
 	--coccinelle)
 		coccinelle="--coccinelle"
+		program_required "spatch" "Usually Linux distribution provide a 'spatch' or 'coccinelle' package"
 		;;
 	-K|--keywords)
 		keywords="$(opt_check_read "$1" "$2")"
@@ -321,6 +325,23 @@ done
 
 kernel_tree="$(readlink -ev -- "$1")"; shift
 defconfigs="$@"
+
+# Make sure external programs we depend on are installed
+msg="You probably did not compile it, run 'make' in the topmost aiaiai source code directory"
+program_required "remap-log" "$msg"
+program_required "aiaiai-locker" "$msg"
+program_required "git" ""
+program_required "make" ""
+program_required "patch" ""
+program_required "formail" ""
+program_required "python" ""
+program_required "diff" ""
+
+for defconfig in $defconfigs; do
+	cross="$(leave_third "$defconfig")";
+	program_required "${cross}gcc" \
+			 "You can download various cross-compilers from http://kernel.org/pub/tools/crosstool"
+done
 
 [ -n "$tmpdir" ] || tmpdir="$(mktemp -dt "$PROG.XXXX")"
 tmpdir1="$tmpdir/before"
