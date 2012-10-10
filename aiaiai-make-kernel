@@ -30,7 +30,7 @@ Options:
                          source directory (<kernel-tree>);
   -D, --defconfig=CONF   name of the defconfig to use for each target; if the
                          name contains a "/" character, it is interpreted as a
-                         send-alone defconfig file, otherwise it is assumed
+                         stand-alone defconfig file, otherwise it is assumed
                          that CONF is part of the <kernel-tree>;
   -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
   -O, --stdout=FILE      redirect stdout of the build to FILE;
