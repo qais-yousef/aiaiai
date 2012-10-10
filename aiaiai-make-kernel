@@ -90,7 +90,7 @@ make_target()
 	local target="$1"
 
 	if [ -n "$defconfig" ]; then
-		if printf "%s" "$defconfig" | grep '/'; then
+		if printf "%s" "$defconfig" | grep -q '/'; then
 			# The defconfig is a path to a stand-alone defconfig file
 			# FIXME: ugly hack!
 			make -C $kernel_tree ${arch:+ARCH="$arch"} \
