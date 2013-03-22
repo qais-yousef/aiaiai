@@ -1,28 +1,5 @@
-* Thu Jul 26 2012 Ed Bartosh <eduard.bartosh@intel.com> 1.1.0@49e8457
+* Thu Jul 26 2012 Ed Bartosh <eduard.bartosh@intel.com> - 0.0
 - Improved rpm packaging
-
-* Mon Jul 23 2012 Olev Kartau <olev.kartau@intel.com> 
-- renamed from mscripts to aiaiai
-
-* Fri Jul 20 2012 Olev Kartau <olev.kartau@intel.com> 
-- updated to latest version 0.0.20120718,
-  at 454a9647e46f4e24400d1b55ed419400ff7da187
-
-* Fri Apr 13 2012 Olev Kartau <olev.kartau@intel.com> 
-- updated to latest version0.0.20120410, note, taken from external git
-  git://git.infradead.org/users/dedekind/aiaiai.git 
-  at e5d966f49f5d64dc31154fdec27153c427b19b48
-
-* Wed Feb 15 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> - 0.0.20120214
-- Bump to Artem's latest version, change version numbering to be date-based
-- Add tarball generation script
-- Drop diff-logs patch
-
-* Wed Jan 11 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> - 0.0.81.geb9f5fb
-- Bump to Artem's latest version
-
-* Thu Dec 08 2011 Markus Lehtonen <markus.lehtonen@linux.intel.com> - 0.0
-- Switch to Artem version of mscripts
 
 * Mon Nov 28 2011 Markus Lehtonen <markus.lehtonen@linux.intel.com> - 0.0
 - Initial RPM packaging
