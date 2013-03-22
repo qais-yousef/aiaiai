@@ -1,16 +1,15 @@
 Name:       aiaiai
 Summary:    Kernel patch validation scripts
-Version:    1.1.0
+Version:    1.2
 Release:    1
 Group:      Development/Tools/Other
-License:    Intel Proprietary
+License:    GPLv2
 URL:        http://git.nifradead.org/users/dedekind/aiaiai.git
 
 Source0:    %{name}-%{version}.tar.bz2
 
-Requires:   libshell
 Requires:   python >= 2.5
-Requires:   perl-base
+Requires:   perl
 Requires:   git-core
 Requires:   gcc
 Requires:   make
@@ -47,12 +46,22 @@ you do not need these scripts.
 make %{?_smp_mflags}
 
 %install
-%make_install
+install -d %{buildroot}/usr/bin
+cp -a * %{buildroot}/usr/bin
+rm -rf %{buildroot}/usr/bin/packaging
+rm -rf %{buildroot}/usr/bin/doc
+rm %{buildroot}/usr/bin/*.c
+rm %{buildroot}/usr/bin/Makefile
+rm %{buildroot}/usr/bin/external/*.c
+rm %{buildroot}/usr/bin/external/Makefile
 
 %files
 %defattr(-,root,root,-)
-%{_bindir}/*
+%{_bindir}/aiaiai*
+%{_bindir}/external
 
 %files email
 %defattr(-,root,root,-)
 %{_bindir}/email/*
+
+%doc doc/README doc/README.announcement
