@@ -1,0 +1,241 @@
+#!/bin/sh -efu
+
+# Copyright 2011-2012 Intel Corporation
+# Author: Artem Bityutskiy
+# License: GPLv2
+
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir/..:$srcdir/../external/libshell:$PATH"
+
+. shell-error
+. shell-args
+. shell-signal
+. shell-quote
+. aiaiai-sh-functions
+
+message_time="yes"
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] <kernel-tree> <defconfig,[arch[,cross]] ...>
+
+<kernel-tree>                   - directory with kernel sources
+<gerrit-refspec>                - gerrit revespec to test (refs/changes/..)
+<gerrit-url>                    - URL of the gerrit server
+<defconfig,[arch[,cross]] ...>  - list of configurations to test.
+
+This script implements Jenkins work triggered by the "Gerrit Trigger" Jenkins
+plugin. Its main task is to run 'aiaia-test-patchset' and report the results
+back to gerrit.
+
+The configurations are specified as follows the same way as they are specified
+for 'aiaiai-test-patchset'.
+
+Options:
+  -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
+  -w, --workdir=WDIR     path to the working directory where the kernel will
+                         be built (default: a temporary directory is created
+                         using mktemp);
+      --logdir=LOGDIR    build logs will be put to this directory (by default
+                         the build logs are stored in the script's temporary
+                         directory and removed upon exit, unless -p is
+                         specified);
+  -C, --confdir=CDIR     path to the directory containing the defconfig files
+                         (those you specify at the end); by default the
+                         defconfig files are assumed to be part of the
+                         <kernel-tree>; this option makes it possible to use
+                         stand-alone defconfig files instead;
+  -p, --preserve         preserve all the temporary files - do not clean up;
+      --bisectability    test bisectability;
+      --sparse           check with sparse while building;
+      --smatch           check with smatch while building;
+      --cppcheck         check with cppcheck while building;
+      --coccinelle       check with coccinelle (spatch) while building;
+  -Q  --quick-fixes=F    sometimes it is necessary to carry out-of-tree patches
+                         like quick build fixes and this option allows to pass
+                         an mbox file with quick fixes which will be applied
+                         first and the user patch-set will be tested on top of
+                         the fixes;
+  -K  --keywords=FILE    match keywords from FILE against the patch
+  -M, --kmake-opts       additional options to append to the final kernel
+                         compilation 'make' command
+                         (e.g., W=2 KALLSYMS_EXTRA_PASS=1);
+  -v, --verbose          be verbose;
+  -h, --help             show this text and exit.
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+tmpdir=
+preserve=
+lockfile=
+cleanup_handler()
+{
+	rm $verbose -f -- "$lockfile" >&2
+	if [ -z "$preserve" ]; then
+		[ -z "$tmpdir" ] || verbose "Removing $tmpdir";
+		rm -rf -- "$tmpdir" >&2
+	fi
+}
+set_cleanup_handler cleanup_handler
+
+TEMP=`getopt -n $PROG -o j:,w:,C:,p,Q:,K:,M:,v,h --long jobs:,workdir:,logdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,quick-fixes:,keywords:,kmake-opts:,verbose,help -- "$@"` ||
+	fail_usage ""
+eval set -- "$TEMP"
+
+jobs=1
+logdir=
+confdir=
+bisectability=
+sparse=
+smatch=
+cppcheck=
+coccinelle=
+quick_fixes=
+keywords=
+kmake_opts=
+verbose=
+quiet="-q"
+
+while true; do
+	case "$1" in
+	-j|--jobs)
+		jobs=$(opt_check_number "$1" "$2")
+		shift
+		;;
+	-w|--workdir)
+		mkdir $verbose -p -- "$2" >&2
+		tmpdir="$(mktemp --tmpdir="$(readlink -fv -- "$2")" -dt "$PROG.XXXX")"
+		shift
+		;;
+	--logdir)
+		logdir="$(opt_check_dir "$1" "$2")"
+		shift
+		;;
+	-C|--confdir)
+		confdir="$(opt_check_dir "$1" "$2")"
+		shift
+		;;
+	-p|--preserve)
+		preserve="--preserve"
+		;;
+	-Q|--quick-fixes)
+		quick_fixes="$(opt_check_read "$1" "$2")"
+		shift
+		;;
+	--bisectability)
+		bisectability="--bisectability"
+		;;
+	--sparse)
+		sparse="--sparse"
+		program_required "sparse" "See section 'sparse' in doc/README"
+		;;
+	--smatch)
+		smatch="--smatch"
+		program_required "smatch" "See section 'smatch' in doc/README"
+		;;
+	--cppcheck)
+		cppcheck="--cppcheck"
+		program_required "cppcheck" "Usually Linux distribution provide a cppcheck package"
+		;;
+	--coccinelle)
+		coccinelle="--coccinelle"
+		program_required "spatch" "Usually Linux distribution provide a 'spatch' or 'coccinelle' package"
+		;;
+	-K|--keywords)
+		keywords="$(opt_check_read "$1" "$2")"
+		shift
+		;;
+	-M|--kmake-opts)
+		kmake_opts="$2"
+		shift
+		;;
+	-v|--verbose)
+		verbose=-v
+		quiet=
+		;;
+	-h|--help)
+		show_usage
+		exit 0
+		;;
+	--) shift; break
+                ;;
+	*) fail_usage "Unrecognized option: $1"
+		;;
+	esac
+	shift
+done
+
+[ "$#" -ge 4 ] || fatal 'Insufficient arguments'
+
+[ -n "$tmpdir" ] || tmpdir="$(mktemp -dt "$PROG.XXXX")"
+
+kernel_tree="$(readlink -ev -- "$1")"; shift
+gerrit_refspec="$1"; shift
+gerrit_url="$1"; shift
+defconfigs="$@"
+
+# Extract the port number to a separate variable
+gerrit_port=$(printf "%s" "$gerrit_url" | sed -n -e 's/\([^:]*\):\{0,1\}\([0-9]*\)$/\2/p')
+if [ -z "$gerrit_port" ]; then
+	gerrit_port=29418
+else
+	gerrit_url=$(printf "%s" "$gerrit_url"  | sed -n -e 's/\([^:]*\):\{0,1\}\([0-9]*\)$/\1/p')
+fi
+
+verbose "Gerrit URL: $gerrit_url, port $gerrit_port"
+
+# Fetch the change and find out its commit ID. Protect this with a lockfile.
+lockfile="/tmp/$PROG.lock"
+verbose "Taking the lock file \"$lockfile\" (timeout - 10 min)"
+lockfile -r 75 "$lockfile"
+
+verbose "Fetching change $gerrit_refspec"
+git --git-dir="$kernel_tree/.git" fetch -v -- origin "$gerrit_refspec"
+commit_id=$(git --git-dir="$kernel_tree/.git" rev-parse "FETCH_HEAD^{commit}")
+base_commit_id=$(git --git-dir="$kernel_tree/.git" rev-parse "$commit_id^^{commit}")
+
+verbose "Removing the \"$lockfile\" lockfile"
+rm $verbose -f -- "$lockfile" >&2
+
+verbose "Extracting the patch (commit id $commit_id)"
+git --git-dir="$kernel_tree/.git" format-patch -1 --stdout "$commit_id" > "$tmpdir/patch.mbox"
+
+if [ -n "$verbose" ]; then
+	verbose "The following patch will be tested against commit $base_commit_id"
+	printf "\n"
+	print_separator
+	printf "\n"
+	cat "$tmpdir/patch.mbox"
+	print_separator
+	printf "\n"
+fi
+
+# Start preparing the test results file
+
+aiaiai-test-patchset -j "$jobs" -c "$base_commit_id" -i "$tmpdir/patch.mbox" \
+	-w "$tmpdir" ${logdir:+--logdir "$logdir"} ${confdir:+-C "$confdir"} \
+	$preserve ${quick_fixes:+-Q "$quick_fixes"} \
+	$bisectability $sparse $smatch $cppcheck $coccinelle \
+	${keywords:+-K "$keywords"} ${kmake_opts:+-M "$kmake_opts"} $verbose \
+	-- "$kernel_tree" $defconfigs >> "$tmpdir/test-result.txt" || \
+	echo "Sorry, internal Aiaiai error" >> "$tmpdir/test-result.txt"
+
+cat "$tmpdir/test-result.txt"
+
+# Add a leading white-space to prevent Gerrit from mangling the text
+sed -e 's/.*/ &/' -i "$tmpdir/test-result.txt"
+
+# Since the resulting text will be passed through a shell command, we have to
+# quote special caracters.
+quote_shell_variable message "$(cat "$tmpdir/test-result.txt")"
+
+verbose "Adding the resulting comment to gerrit URL $gerrit_url, port $gerrit_port"
+ssh -p $gerrit_port $gerrit_url gerrit review --message "\"$message\"" "$commit_id"
