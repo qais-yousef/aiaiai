@@ -123,20 +123,21 @@ test_checkpatch()
 		cat < "$tmp_out" >> "$tmpdir/checkpatch.results"
 	done
 
-	# Check the squashed patch
-	truncate -s0 "$tmp_out"
-	checkpatch.pl $opts - < "$mbox" > "$tmp_out" ||:
-	[ -s "$tmp_out" ] || return 0
-
-	printf "\n" >> "$tmpdir/checkpatch.results"
-	print_separator >> "$tmpdir/checkpatch.results"
-
 	if [ "$patch_cnt" -gt 1 ]; then
+		# Check the squashed patch
+		truncate -s0 "$tmp_out"
+		checkpatch.pl $opts - < "$mbox" > "$tmp_out" ||:
+		[ -s "$tmp_out" ] || return 0
+
+		printf "\n" >> "$tmpdir/checkpatch.results"
+		print_separator >> "$tmpdir/checkpatch.results"
+
 		printf "\n%s\n\n" "checkpatch.pl results for the entire squashed patch-set" \
 			>> "$tmpdir/checkpatch.results"
+
+		cat < "$tmp_out" >> "$tmpdir/checkpatch.results"
 	fi
 
-	cat < "$tmp_out" >> "$tmpdir/checkpatch.results"
 }
 
 pid_bisect=
