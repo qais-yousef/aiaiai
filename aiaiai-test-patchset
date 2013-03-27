@@ -59,6 +59,10 @@ Options:
   -w, --workdir=WDIR     path to the working directory where the kernel will
                          be built (default: a temporary directory is created
                          using mktemp);
+      --logdir=LOGDIR    build logs will be put to this directory (by default
+                         the build logs are stored in the script's temporary
+                         directory and removed upon exit, unless -p is
+                         specified);
   -C, --confdir=CDIR     path to the directory containing the defconfig files
                          (those you specify at the end); by default the
                          defconfig files are assumed to be part of the
@@ -75,10 +79,10 @@ Options:
                          an mbox file with quick fixes which will be applied
                          first and the user patch-set will be tested on top of
                          the fixes;
-  -K  --keywords=FILE    match keywords from FILE against the patch
+  -K  --keywords=FILE    match keywords from FILE against the patch;
   -M, --kmake-opts       additional options to append to the final kernel
                          compilation 'make' command
-                         (e.g., W=2 KALLSYMS_EXTRA_PASS=1)
+                         (e.g., W=2 KALLSYMS_EXTRA_PASS=1);
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
 EOF
@@ -162,7 +166,7 @@ test_configuration()
 
 	verbose "Build non-patched kernel (\"$cloned_kernel1\", configuration \"$config\")"
 
-	local log1="$tmpdir1/$config"
+	local log1="$logdir1/$config"
 	local obj1="$tmpdir1/obj.$config"
 
 	aiaiai-make-kernel $verbose $sparse $smatch $cppcheck $coccinelle -o "$obj1" \
@@ -184,7 +188,7 @@ test_configuration()
 
 	verbose "Build patched kernel (\"$cloned_kernel2\", configuration \"$config\")"
 
-	local log2="$tmpdir2/$config"
+	local log2="$logdir2/$config"
 	local obj2="$tmpdir2/obj.$config"
 
 	aiaiai-make-kernel $verbose $sparse $smatch $cppcheck $coccinelle -o "$obj2" \
@@ -217,11 +221,12 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,Q:,K:,M:,v,h --long jobs:,commit-id:,input:,workdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,quick-fixes:,keywords:,kmake-opts:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,Q:,K:,M:,v,h --long jobs:,commit-id:,input:,workdir:,logdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,quick-fixes:,keywords:,kmake-opts:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
 jobs=1
+logdir=
 confdir=
 commit_id1=HEAD
 mbox=
@@ -253,6 +258,10 @@ while true; do
 	-w|--workdir)
 		mkdir $verbose -p -- "$2" >&2
 		tmpdir="$(mktemp --tmpdir="$(readlink -fv -- "$2")" -dt "$PROG.XXXX")"
+		shift
+		;;
+	--logdir)
+		logdir="$(opt_check_dir "$1" "$2")"
 		shift
 		;;
 	-C|--confdir)
@@ -335,6 +344,16 @@ done
 tmpdir1="$tmpdir/before"
 tmpdir2="$tmpdir/after"
 mkdir -p $verbose "$tmpdir1" "$tmpdir2" >&2
+
+if [ -n "$logdir" ]; then
+	logdir1="$logdir/before"
+	logdir2="$logdir/after"
+	mkdir -p $verbose "$logdir1" "$logdir2" >&2
+else
+	logdir="$tmpdir"
+	logdir1="$tmpdir1"
+	logdir2="$tmpdir2"
+fi
 
 # Save the mbox to a temporary file if it comes from stdin
 if [ -z "$mbox" ]; then
@@ -420,8 +439,8 @@ echo "Tested the patch(es) on top of the following commits:"
 git --no-pager log -4 --oneline "$commit_id1"
 
 for defconfig in $defconfigs; do
-	log1="$tmpdir1/$defconfig.stderr.log"
-	log2="$tmpdir2/$defconfig.stderr.log"
+	log1="$logdir1/$defconfig.stderr.log"
+	log2="$logdir2/$defconfig.stderr.log"
 
 	printf "\n"
 	print_separator
