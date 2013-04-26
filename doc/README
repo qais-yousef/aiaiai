@@ -172,10 +172,6 @@ sends it back to the patch submitter.
     the series one-by-one, compiling the kernel and checking that compilation
     was successful.
 
-* aiaiai-test-defconfigs
-    If the patch-set changes a defconfig, this script verifies that the
-    defconfig is changed properly ("make savedefconfig" was used).
-
 * aiaiai-decode-rfc-2047
     A small helper script which decodes unreadable patch subjects encoded with
     RFC-2047 MIME encoding.
@@ -191,7 +187,6 @@ To summarize:
  * 'aiaiai-test-patchset' is the central script
    * it runs 'checkpatch.pl'
    * it runs 'aiaiai-test-bisectability'
-   * it runs 'aiaiai-test-defconfigs'
    * for every configuration specified by the user, it builds the kernel
      before and after the patch using the 'aiaiai-make-kernel' script, then
      compares the build log using the 'aiaiai-diff-log' script.

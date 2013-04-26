@@ -426,11 +426,6 @@ for defconfig in $defconfigs; do
 	test_configuration "$defconfig"
 done
 
-# Check defconfigs - use the second copy of the kernel because the first one is
-# used by 'aiaiai-test-bisectability'.
-aiaiai-test-defconfigs $verbose $preserve -c "$commit_id1" -i "$mbox" -w "$tmpdir" \
-	--dont-clone "$cloned_kernel2" > "$tmpdir/test-defconfigs.results"
-
 wait "$pid_checkpatch" || fatal "checkpatch failed"
 [ -z "$keywords" ]     || wait "$pid_keywords" || fatal "aiaiai-match-keywords failed"
 [ -z "$pid_bisect" ]   || wait "$pid_bisect"   || fatal "aiaiai-test-bisectability failed"
@@ -472,13 +467,6 @@ for defconfig in $defconfigs; do
 		printf "\n%s\n" "Successfully built configuration \"$defconfig\", no issues"
 	fi
 done;
-
-if [ -s "$tmpdir/test-defconfigs.results" ]; then
-	printf "\n"
-	print_separator
-	printf "\n%s\n\n" "Defconfig issues detected:"
-	cat "$tmpdir/test-defconfigs.results"
-fi
 
 if [ -s "$tmpdir/keywords.results" ]; then
 	printf "\n"
