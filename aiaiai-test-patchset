@@ -126,7 +126,7 @@ test_checkpatch()
 	if [ "$patch_cnt" -gt 1 ]; then
 		# Check the squashed patch
 		truncate -s0 "$tmp_out"
-		checkpatch.pl $opts - < "$mbox" > "$tmp_out" ||:
+		checkpatch.pl $opts - < "$tmpdir/diff-for-checkpatch" > "$tmp_out" ||:
 		[ -s "$tmp_out" ] || return 0
 
 		printf "\n" >> "$tmpdir/checkpatch.results"
