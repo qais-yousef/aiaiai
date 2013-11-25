@@ -232,9 +232,8 @@ aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt -D "$dconf" \
 	-O "$tmpdir/$defconfig.stdout.log" -E "$tmpdir/$defconfig.stderr.log" \
 	${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel" all
 if build_failed "$tmpdir/$defconfig.stderr.log"; then
-	# Failed to build the base commit, report and exit
+	# Failed to build the base commit, report, but don't exit incase the first patch fixes the issue.
 	build_failure "$defconfig" "$commit_id" < "$tmpdir/$defconfig.stderr.log"
-	exit 0
 fi
 
 n=0
