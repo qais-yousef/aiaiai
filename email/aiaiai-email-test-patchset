@@ -40,6 +40,7 @@ Options:
       --bisectability    test bisectability;
       --sparse           check with sparse while building;
       --smatch           check with smatch while building;
+      --cppcheck         check with cppcheck;
       --coccinelle       check with coccinlle;
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
@@ -147,7 +148,7 @@ project_name()
 	printf "%s" "$list" | LC_ALL=C sed -n -e "s/.*$ol+\([^@]\+\)@$od.*/\1/p" | head -n1
 }
 
-TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long test-mode,input:,confdir:,preserve,bisectability,sparse,smatch,coccinelle,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long test-mode,input:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -157,6 +158,7 @@ test_mode=
 bisectability=
 sparse=
 smatch=
+cppcheck=
 coccinelle=
 
 while true; do
@@ -183,6 +185,9 @@ while true; do
 		;;
 	--smatch)
 		smatch="--smatch"
+		;;
+	--cppcheck)
+		cppcheck="--cppcheck"
 		;;
 	--coccinelle)
 		coccinelle="--coccinelle"
@@ -322,8 +327,8 @@ fi
 
 # Test the path (or patch-set)
 message "Test configs \"$defconfigs\" branch \"$branch\" of \"$kernel_dir\""
-aiaiai-test-patchset $verbose $preserve $bisectability $sparse $smatch $coccinelle \
-	-i "$mbox" -j "$jobs" -c "$branch" -w "$tmpdir" \
+aiaiai-test-patchset $verbose $preserve $bisectability $sparse $smatch $cppcheck $coccinelle \
+	-i "$mbox" -j "$jobs" -c "$commit" -w "$tmpdir" \
 	${confdir:+-C "$confdir"} \
 	${keywords:+-K "$keywords"} -- \
 	"$kernel_dir" "$defconfigs" > "$tmpdir/test-patchset.log" ||
