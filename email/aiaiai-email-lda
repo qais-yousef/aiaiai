@@ -93,10 +93,10 @@ find_relatives()
 	local parent_id="$1"; shift
 
 	# Find the parent, children, and brothers
-	LC_ALL=C grep -l -r -- "In-Reply-To: $id" "$where" ||:
+	LC_ALL=C grep -i -l -r -- "In-Reply-To: $id" "$where" ||:
 	if [ -n "$parent_id" ]; then
-		LC_ALL=C grep -l -r -- "Message-Id: $parent_id" "$where" ||:
-		LC_ALL=C grep -l -r -- "In-Reply-To: $parent_id" "$where" ||:
+		LC_ALL=C grep -i -l -r -- "Message-Id: $parent_id" "$where" ||:
+		LC_ALL=C grep -i -l -r -- "In-Reply-To: $parent_id" "$where" ||:
 	fi
 }
 
