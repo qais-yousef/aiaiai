@@ -163,7 +163,7 @@ fi
 
 if [ -n "$run_sparse" ]; then
 	# Sparse uses stderr for check results, not sure about stdout
-	sparse "$@" > "$tmpdir/sparse" 2>&1 &
+	sparse -Wsparse-all "$@" > "$tmpdir/sparse" 2>&1 &
 	pid_sparse="$!"
 fi
 if [ -n "$run_smatch" ]; then
