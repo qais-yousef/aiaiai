@@ -129,7 +129,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o o:,D:,j:,O:,E:,k:,a:,M:,v,h --long objdir:,defconfig:,jobs:,stdout:,stderr:,keep-going:,arch:,sparse,smatch,cppcheck,coccinelle,check-only:,kmake-opts:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o o:,D:,j:,O:,E:,k:,a:,M:,v,h --long objdir:,defconfig:,jobs:,stdout:,stderr:,keep-going,arch:,sparse,smatch,cppcheck,coccinelle,check-only:,kmake-opts:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -175,7 +175,7 @@ while true; do
 		build_stderr_given="y"
 		shift
 		;;
-	-k|--keep_going)
+	-k|--keep-going)
 		keep_going="--keep-going"
 		;;
 	-a|--arch)
