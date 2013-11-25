@@ -96,7 +96,7 @@ compile_test()
 		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel" all
 	failed="$(tail -n1 -- "$tmpdir/$defconfig.stderr.log")"
 	if [ "$failed" = "FAILURE" ]; then
-		# Failed to build the base commit, report and exit
+		# Failed to build this commit, report and exit
 		build_failure "$defconfig" "HEAD" < "$tmpdir/$defconfig.stderr.log"
 		exit 0
 	fi
