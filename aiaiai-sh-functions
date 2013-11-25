@@ -58,13 +58,13 @@ fetch_header_or_die()
 	printf "%s\n" "$res"
 }
 
-fetch_all_headers()
+fetch_header_per_patch()
 {
 	local hdr="$1"
 
 	program_required "formail" ""
 
-	# Take only the first occurrence of the header
+	# Take only the first occurrence of the header per message
 	formail -s sh -c "formail -z -c -x \"$hdr:\" | head -n1" | aiaiai-decode-rfc-2047
 }
 
