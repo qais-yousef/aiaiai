@@ -176,9 +176,12 @@ test_configuration()
 	local log1="$logdir1/$config"
 	local obj1="$tmpdir1/obj.$config"
 
+	# Note, we use the --keep-going option assuming that the base commit
+	# build may fail, which is OK for continuing as long as the patches
+	# under test fix it.
 	aiaiai-make-kernel $verbose $sparse $smatch $cppcheck $coccinelle -o "$obj1" \
 		--check-only "$mod_files" -j "$jobs" $arch_opt -D "$defconfig" \
-		-O "$log1.stdout.log" -E "$log1.stderr.log" \
+		-O "$log1.stdout.log" -E "$log1.stderr.log" --keep-going \
 		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel1" all
 
 	verbose "Done with non-patched kernel"
@@ -453,7 +456,7 @@ for defconfig in $defconfigs; do
 	# Make kernel appends a "FAILURE" string at the end when builds fail
 	if build_failed "$log1"; then
 		build_failure "$defconfig" "$commit_id1" < "$log1"
-		continue
+		print_separator
 	fi
 
 	if build_failed "$log2"; then
