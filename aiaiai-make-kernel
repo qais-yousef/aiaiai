@@ -110,7 +110,7 @@ make_target()
 		${cross:+CROSS_COMPILE="$cross"} ${objdir:+O="$objdir"} \
 		CHECK=\"aiaiai-checker $sparse $smatch $cppcheck $coccinelle $check_only --\" \
 		KCFLAGS='-Wno-missing-field-initializers -Wno-sign-compare' \
-		C=$check W=1 SHELL=\"aiaiai-locker $split -l $lockfile\" \
+		C=$check ${check:+CF="-D__CHECK_ENDIAN__"} W=1 SHELL=\"aiaiai-locker $split -l $lockfile\" \
 		$kmake_opts $target"
 }
 
