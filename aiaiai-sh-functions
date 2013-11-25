@@ -128,9 +128,13 @@ $(git log -1 --oneline "$cmt")
 
 $am
 
-Results of "patch -p1 < .git/rebase-apply/patch":
+Results of "patch --merge=diff3 -p1 < .git/rebase-apply/patch":
 
-$(patch -p1 < .git/rebase-apply/patch 2>&1)
+$(patch --merge=diff3 -p1 < .git/rebase-apply/patch 2>&1)
+
+print_separator
+
+$(git diff --no-color)
 EOF
 		return 1
 	}
