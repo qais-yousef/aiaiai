@@ -212,7 +212,8 @@ verbose "Bisecting $patch_cnt patches for configuration \"$defconfig\""
 
 if [ -z "$dont_clone" ]; then
 	cloned_kernel="$tmpdir/src"
-	git clone "${verbose:--q}" "$kernel_tree" "$cloned_kernel" >&2
+	# Use a shared clone since it is local and we won't mess up the tree
+	git clone --shared "${verbose:--q}" "$kernel_tree" "$cloned_kernel" >&2
 else
 	cloned_kernel="$kernel_tree"
 fi
