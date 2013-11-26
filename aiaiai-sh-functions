@@ -65,8 +65,7 @@ fetch_header_per_patch()
 	program_required "formail" ""
 
 	# Take only the first occurrence of the header per message
-	# Allow non strict formatting
-	formail -ds sh -c "formail -z -c -x \"$hdr:\" | head -n1" | aiaiai-decode-rfc-2047
+	formail -s sh -c "formail -z -c -x \"$hdr:\" | head -n1" | aiaiai-decode-rfc-2047
 }
 
 # All patches we deal with has to have the following prefix

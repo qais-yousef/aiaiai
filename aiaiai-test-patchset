@@ -102,13 +102,13 @@ test_checkpatch()
 	local tmp_mbox="$tmpdir/checkpatch.tmp_mbox"
 	local opts="--no-tree -q --show-types --ignore PREFER_PACKED,PREFER_ALIGNED"
 
-	patch_cnt="$(formail -ds echo 1 < "$mbox" | wc -l)"
+	patch_cnt="$(formail -s echo 1 < "$mbox" | wc -l)"
 
 	# Iterate over all patches and check each one individually
 	while [ "$n" -lt "$patch_cnt" ]; do
 		local subj
 
-		formail +$n -1 -ds < "$mbox" > "$tmp_mbox"
+		formail +$n -1 -s < "$mbox" > "$tmp_mbox"
 		truncate -s0 "$tmp_out"
 		checkpatch.pl $opts - < "$tmp_mbox" > "$tmp_out" ||:
 		n="$(($n+1))"

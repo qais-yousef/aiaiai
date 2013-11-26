@@ -202,7 +202,7 @@ if [ -z "$mbox" ]; then
 	cat > "$mbox"
 fi
 
-patch_cnt="$(formail -ds echo 1 < "$mbox" | wc -l)"
+patch_cnt="$(formail -s echo 1 < "$mbox" | wc -l)"
 if [ "$patch_cnt" -le 1 ]; then
 	verbose "Only one patch, nothing to test"
 	exit 0;
@@ -237,7 +237,7 @@ fi
 
 n=0
 while [ "$n" -lt "$patch_cnt" ]; do
-	formail +$n -1 -ds < "$mbox" > "$tmp_mbox"
+	formail +$n -1 -s < "$mbox" > "$tmp_mbox"
 	compile_test "$tmp_mbox"
 	n="$(($n+1))"
 done
