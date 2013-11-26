@@ -296,9 +296,6 @@ $ make
 $ cp sparse $HOME/bin
 $ export PATH="$HOME/bin:$PATH"
 
-Note, sparse is also part of smatch, but I do not know the difference between
-sparse which come from smatch and just sparse. I use the latter one.
-
 
 3.3 coccinelle
 ~~~~~~~~~~~~~~
