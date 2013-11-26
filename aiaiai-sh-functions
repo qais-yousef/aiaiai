@@ -114,6 +114,20 @@ subject_check()
 	[ -n "$(printf "%s" "$1" | LC_ALL=C sed -n -E "/$__single/ p")" ]
 }
 
+git_dir()
+{
+	local path="$1"
+	local dotgit="$path/.git"
+
+	if [ -d "$dotgit" ]; then
+		printf "%s" "$dotgit"
+	elif [ -d "$path" ]; then
+		printf "%s" "$path"
+	else
+		fatal "not a git repository: $path"
+	fi
+}
+
 # Apply a patch. In case of error, print user-friendly diagnostic messages to
 # stdin.
 # Usage: apply_patch < <mbox_file>

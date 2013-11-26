@@ -198,15 +198,15 @@ verbose "Taking the lock file \"$lockfile\" (timeout - 10 min)"
 lockfile -r 75 "$lockfile"
 
 verbose "Fetching change $gerrit_refspec"
-git --git-dir="$kernel_tree/.git" fetch -v -- origin "$gerrit_refspec"
-commit_id=$(git --git-dir="$kernel_tree/.git" rev-parse "FETCH_HEAD^{commit}")
-base_commit_id=$(git --git-dir="$kernel_tree/.git" rev-parse "$commit_id^^{commit}")
+git --git-dir="$(git_dir "$kernel_tree")" fetch -v -- origin "$gerrit_refspec"
+commit_id="$(git --git-dir="$(git_dir "$kernel_tree")" rev-parse "FETCH_HEAD^{commit}")"
+base_commit_id="$(git --git-dir="$(git_dir "$kernel_tree")" rev-parse "$commit_id^^{commit}")"
 
 verbose "Removing the \"$lockfile\" lockfile"
 rm $verbose -f -- "$lockfile" >&2
 
 verbose "Extracting the patch (commit id $commit_id)"
-git --git-dir="$kernel_tree/.git" format-patch -1 --stdout "$commit_id" > "$tmpdir/patch.mbox"
+git --git-dir="$(git_dir "$kernel_tree")" format-patch -1 --stdout "$commit_id" > "$tmpdir/patch.mbox"
 
 if [ -n "$verbose" ]; then
 	verbose "The following patch will be tested against commit $base_commit_id"

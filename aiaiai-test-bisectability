@@ -221,7 +221,7 @@ else
 fi
 
 cd "$cloned_kernel"
-commit_id="$(git --git-dir="$kernel_tree/.git" rev-parse "$commit_id^{commit}")"
+commit_id="$(git --git-dir="$(git_dir "$kernel_tree")" rev-parse "$commit_id^{commit}")"
 git reset $quiet --hard "$commit_id" >&2
 
 dconf="$defconfig"
