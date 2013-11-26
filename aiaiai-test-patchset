@@ -115,7 +115,8 @@ test_checkpatch()
 
 		[ -s "$tmp_out" ] || continue
 
-		subj="$(fetch_header_or_die "Subject" < "$tmp_mbox")"
+		fetch_header_or_die subj "Subject" < "$tmp_mbox"
+
 		printf "\n" >> "$tmpdir/checkpatch.results"
 		print_separator >> "$tmpdir/checkpatch.results"
 		printf "\n%s\n\n" "checkpatch.pl results for patch \"$subj\"" \

@@ -52,10 +52,13 @@ reject()
 {
 	local file="$1"; shift
 	local reason="$1" shift
+	local subj
+	local from
+	local id
 
-	local subj="$(fetch_header_or_die "Subject" < "$file")"
-	local from="$(fetch_header_or_die "From" < "$file")"
-	local id="$(fetch_header_or_die "Message-Id" < "$file")"
+	fetch_header_or_die subj "Subject" < "$file"
+	fetch_header_or_die from "From" < "$file"
+	fetch_header_or_die id "Message-Id" < "$file"
 
 	message "Rejecting \"$from: $subj (Message-Id: $id)\""
 	message "Reason: $1"

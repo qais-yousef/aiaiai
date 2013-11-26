@@ -47,15 +47,20 @@ fetch_header()
 	formail -z -c -x "$hdr:" | head -n1 | aiaiai-decode-rfc-2047
 }
 
-# The same as fetch_header, but exits with code 1 if the header hasn't been found
-# Usage: fetch_header_or_die <header_name> < <mbox_file>
+# Similar to fetch_header, but exits with code 1 if the header hasn't been
+# found, and has a little bit different interface (the result is stored in
+# "<var>").
+#
+# Usage: fetch_header_or_die <var> <header_name> < <mbox_file>
 fetch_header_or_die()
 {
-	local hdr="$1"
+	local var="$1"; shift
+	local hdr="$1"; shift
 	local res="$(fetch_header "$hdr")"
 
 	[ -n "$res" ] || fatal "Cannot find the \"$hdr:\" header"
-	printf "%s\n" "$res"
+
+	eval "$var=\"\$res\""
 }
 
 fetch_header_per_patch()

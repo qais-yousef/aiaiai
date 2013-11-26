@@ -216,9 +216,9 @@ if [ -z "$mbox" ]; then
 	cat > "$mbox"
 fi
 
-subj="$(fetch_header_or_die "Subject" < "$mbox")"
-from="$(fetch_header_or_die "From" < "$mbox")"
-id="$(fetch_header_or_die "Message-Id" < "$mbox")"
+fetch_header_or_die subj "Subject" < "$mbox"
+fetch_header_or_die from "From" < "$mbox"
+fetch_header_or_die id "Message-Id" < "$mbox"
 msgname="$from: $subj (Message-Id: $id)"
 
 echo >&2

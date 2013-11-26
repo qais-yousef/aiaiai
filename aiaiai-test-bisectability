@@ -84,7 +84,9 @@ fail_usage()
 compile_test()
 {
 	local file="$1"; shift
-	local subj="$(fetch_header_or_die "Subject" < "$file")"
+	local subj
+
+	fetch_header_or_die subj "Subject" < "$file"
 
 	verbose "Compiling \"$subj\""
 
