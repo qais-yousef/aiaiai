@@ -336,6 +336,7 @@ awk
 git
 lockfile
 diff
+patch
 inotifywait
 
 
