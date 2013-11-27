@@ -73,8 +73,8 @@ fetch_header_per_patch()
 	formail -s sh -c "formail -z -c -x \"$hdr:\" | head -n1" | aiaiai-decode-rfc-2047
 }
 
-# All patches we deal with has to have the following prefix
-prefix_format="[PATCH <ver> <project> <m/n>]"
+# All patches we deal with have to have the following prefix
+prefix_format="[PATCH <ver> <m/n>]"
 
 # Reasonable number of blanks
 __ws="[[:blank:]]{0,4}"
