@@ -29,6 +29,8 @@ The layout of the repository.
     Some external tools and files which we use are stored here.
 * aiaiai/doc
     Some documentation.
+* aiaiai/tests/
+    Unit-tests.
 * aiaiai/
     The root repository directory contains the scripts which do all the
     patch checking work. The central script is 'aiaiai-test-patchset' which

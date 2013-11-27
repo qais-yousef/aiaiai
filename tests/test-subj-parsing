@@ -1,0 +1,110 @@
+#!/bin/sh -efu
+
+# Copyright 2011-2013 Intel Corporation
+# Author: Artem Bityutskiy
+# License: GPLv2
+
+# This is a helper script to test email subject parsing in mscripts. Copy
+# it to the mscripts directory and run.
+
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir/..:$srcdir/../external/libshell:$PATH"
+
+. shell-error
+. aiaiai-sh-functions
+
+PROG="${0##*/}"
+
+# Check the subject.
+#
+# Usage: check_subject <subject> <prj> <m> <n>
+# <subject> - the subject line
+# <prj>     - correct project name
+# <m>       - patch number
+# <n>       - count of patches
+check_subject()
+{
+	local subj="$1"; shift
+	local m="$1"; shift
+	local n="$1"; shift
+	local m1 n1
+
+	subject_check "$subj" ||
+		{ message "subject_check failed for '$subj'"; }
+	m1="$(subject_m "$subj")"
+	[ "$m1" = "$m" ] ||
+		{ message "subject_m failed for '$subj': '$m1' should be '$m'"; }
+	n1="$(subject_n "$subj")"
+	[ "$n1" = "$n" ] ||
+		{ message "subject_n failed for '$subj': '$n1' should be '$n'"; }
+}
+
+bad_subject()
+{
+	local subj="$1"; shift
+
+	! subject_check "$subj" ||
+		{ message "subject_check succeeded for bad subject '$subj'"; }
+}
+
+# Basic
+check_subject "[PATCH] kuku" "" ""
+check_subject "[PATCH so-so] kuku" "" ""
+check_subject "[PATCH so-so 1/1] kuku" "1" "1"
+check_subject "[*] [PATCH so-so 1/1] kuku" "1" "1"
+
+# Numbers
+check_subject "[PATCH 100/1] kuku"       "100" "1"
+check_subject "[PATCH mfld-666 1/999] kuku"       "1" "999"
+check_subject "[PATCH 0001/0999] kuku"   "1" "999"
+check_subject "[PATCH mfld-666 10/00000009] kuku" "10" "9"
+
+check_subject "[PATCH 100/1] kuku" "100" "1"
+check_subject "[PATCH 1/999] kuku" "1" "999"
+check_subject "[PATCH 0001/0999] kuku" "1" "999"
+check_subject "[PATCH 10/00000009] kuku" "10" "9"
+
+# Invalid numbers
+check_subject "[PATCH abcd 1/] kuku" "" ""
+check_subject "[PATCH 01/] kuku" "" ""
+check_subject "[PATCH 018888888888888888/] kuku" "" ""
+check_subject "[PATCH /1] kuku" "" ""
+check_subject "[PATCH /1/] kuku" "" ""
+check_subject "[PATCH /] kuku" "" ""
+check_subject "[PATCH //] kuku" "" ""
+check_subject "[PATCH /0000000002] kuku" "" ""
+
+# Stuff between PATCH and numbers
+check_subject "[PATCH 1 10/010] kuku"       "10" "10"
+check_subject "[PATCH -_)(*&^ 10/10] kuku"     "10" "10"
+
+# Spaces
+check_subject "[PATCH		x		10/10] kuku"  "10" "10" # tabtabxtabtab
+check_subject "[PATCH  @  10/10] kuku"                        "10" "10" # spcspc@spcspc
+check_subject "[	PATCH  +  10/010	] kuku"       "10" "10" # tabPATCHspcspc+spcspc
+
+# Several prefixes
+check_subject "[RFC][PATCH] kuku" "" ""
+check_subject "[RFC] [PATCH 2/4] kuku" "2" "4"
+check_subject "[RFC] [oh!] [PATCH ^#$] kuku" "" ""
+
+# Comma
+check_subject "[RFC][PATCH, ] kuku" "" ""
+check_subject "[PATCH , HC-2.6.36] kuku" "" ""
+check_subject "[PATCH, 3.0 2/2] kuku" "2" "2"
+
+# Version
+check_subject "[driver]	[PATCH v2] kuku" "" ""
+check_subject "[driver]	[PATCH V2 prj] kuku" "" ""
+check_subject "[driver]	[PATCH v999 1/1] kuku" "1" "1"
+check_subject "[driver]	[PATCH [ 9/111] kuku" "9" "111"
+
+# Case
+check_subject "[Patch 9/111] kuku" "9" "111"
+
+# Bad subjects
+bad_subject "[driver] kuku"
+bad_subject "Re: [driver]	[PATCH V2 prj] kuku"
+bad_subject "Re: [PATCH 1 10/10] kuku"
+
+echo "Done" >&2
