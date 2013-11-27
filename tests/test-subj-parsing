@@ -52,12 +52,13 @@ check_subject "[PATCH] kuku" "" ""
 check_subject "[PATCH so-so] kuku" "" ""
 check_subject "[PATCH so-so 1/1] kuku" "1" "1"
 check_subject "[*] [PATCH so-so 1/1] kuku" "1" "1"
+check_subject "[*] [Prefix PATCH so-so 1/1] kuku" "1" "1"
 
 # Numbers
 check_subject "[PATCH 100/1] kuku"       "100" "1"
 check_subject "[PATCH mfld-666 1/999] kuku"       "1" "999"
 check_subject "[PATCH 0001/0999] kuku"   "1" "999"
-check_subject "[PATCH mfld-666 10/00000009] kuku" "10" "9"
+check_subject "[XXX PATCH mfld 666 10/00000009] kuku" "10" "9"
 
 check_subject "[PATCH 100/1] kuku" "100" "1"
 check_subject "[PATCH 1/999] kuku" "1" "999"
@@ -67,21 +68,26 @@ check_subject "[PATCH 10/00000009] kuku" "10" "9"
 # Invalid numbers
 check_subject "[PATCH abcd 1/] kuku" "" ""
 check_subject "[PATCH 01/] kuku" "" ""
-check_subject "[PATCH 018888888888888888/] kuku" "" ""
+check_subject "[A PATCH 018888888888888888/] kuku" "" ""
 check_subject "[PATCH /1] kuku" "" ""
 check_subject "[PATCH /1/] kuku" "" ""
 check_subject "[PATCH /] kuku" "" ""
 check_subject "[PATCH //] kuku" "" ""
 check_subject "[PATCH /0000000002] kuku" "" ""
 
-# Stuff between PATCH and numbers
+# Prefix/Suffix
 check_subject "[PATCH 1 10/010] kuku"       "10" "10"
 check_subject "[PATCH -_)(*&^ 10/10] kuku"     "10" "10"
+check_subject "[*&^ PATCH v2] kuku" "" ""
+check_subject "[driver]	[-_)(*&^	PATCH v2] kuku" "" ""
+check_subject "[driver]	[ My[[:blank:]] PATCH v2] kuku" "" ""
+
 
 # Spaces
 check_subject "[PATCH		x		10/10] kuku"  "10" "10" # tabtabxtabtab
 check_subject "[PATCH  @  10/10] kuku"                        "10" "10" # spcspc@spcspc
 check_subject "[	PATCH  +  10/010	] kuku"       "10" "10" # tabPATCHspcspc+spcspc
+check_subject "[ A 	PATCH 10/010] kuku"                   "10" "10" # spcAspctabPATCH
 
 # Several prefixes
 check_subject "[RFC][PATCH] kuku" "" ""
@@ -103,8 +109,12 @@ check_subject "[driver]	[PATCH [ 9/111] kuku" "9" "111"
 check_subject "[Patch 9/111] kuku" "9" "111"
 
 # Bad subjects
+bad_subject " [PATCH] kuku"
 bad_subject "[driver] kuku"
 bad_subject "Re: [driver]	[PATCH V2 prj] kuku"
 bad_subject "Re: [PATCH 1 10/10] kuku"
+bad_subject "[mPATCH 1 10/10] kuku"
+bad_subject "[mPATCH] kuku"
+bad_subject "[ mPATCH] kuku"
 
 echo "Done" >&2
