@@ -71,17 +71,6 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-ini_config_get_or_die()
-{
-	local var="$1"; shift
-	local result="$(ini_config_get "$1" "$2" "$3")"
-
-	[ -n "$result" ] ||
-		fatal "Could not find config option \"$2.$3\" in \"$1\""
-
-	eval "$var=\"\$result\""
-}
-
 # Send a reply to the author of the patch, the contents of the reply has to
 # come from stdin
 compose_email()

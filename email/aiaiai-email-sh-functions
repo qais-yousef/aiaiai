@@ -50,3 +50,16 @@ subject_check()
 {
 	[ -n "$(printf "%s" "$1" | LC_ALL=C sed -n -E "/$__single/ p")" ]
 }
+
+# A helper function for 'init_config_get' which fails when unable to get the
+# ini file option.
+ini_config_get_or_die()
+{
+	local var="$1"; shift
+	local result="$(ini_config_get "$1" "$2" "$3")"
+
+	[ -n "$result" ] ||
+		fatal "Could not find config option \"$2.$3\" in \"$1\""
+
+	eval "$var=\"\$result\""
+}
