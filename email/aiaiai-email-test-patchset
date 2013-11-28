@@ -332,7 +332,7 @@ fi
 # Test the path (or patch-set)
 message "Test configs \"$defconfigs\" branch \"$branch\" of \"$kernel_dir\""
 aiaiai-test-patchset $verbose $preserve $bisectability $sparse $smatch $cppcheck $coccinelle \
-	-i "$mbox" -j "$jobs" -c "$commit" -w "$tmpdir" \
+	-i "$mbox" -j "$jobs" -c "$branch" -w "$tmpdir" \
 	${confdir:+-C "$confdir"} \
 	${keywords:+-K "$keywords"} -- \
 	"$kernel_dir" "$defconfigs" > "$tmpdir/test-patchset.log" ||
