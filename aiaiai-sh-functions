@@ -83,7 +83,7 @@ __blanks="[[:blank:]]{0,16}"
 # Reasonable number of [blah] prefixes
 __blah="(\[[^]]*\]${__blanks}){0,4}"
 # The prefix
-__prefix="${__blanks}([^[:blank:]]*${__blanks}${__blank}){0,1}"
+__prefix="${__blanks}([^[:blank:]]*${__blanks}${__blank})?"
 # Patch number pattern
 __num="0*([[:digit:]]+)"
 # The "PATCH" word for case-insensitive matching
@@ -91,7 +91,7 @@ __patch="[Pp][Aa][Tt][Cc][Hh]"
 # Sed regexp matching correct subject
 __single="^${__blah}\[${__prefix}${__patch}.*\].*$"
 # Sed regexps matching m and n
-__series="^${__blah}\[${__prefix}${__patch}.*${__blank}${__num}\/{0,1}${__num}${__blanks}\].*$"
+__series="^${__blah}\[${__prefix}${__patch}.*${__blank}${__num}\/?${__num}${__blanks}\].*$"
 __mref="\3"
 __nref="\4"
 
