@@ -10,6 +10,7 @@ PATH="$srcdir:$srcdir/email:$srcdir/external/libshell:$PATH"
 . shell-error
 . shell-args
 . shell-signal
+. aiaiai-sh-functions
 
 PROG="${0##*/}"
 message_time="yes"
@@ -113,6 +114,8 @@ while true; do
 done
 
 [ "$#" -eq 2 ] || fatal "Insufficient or too many arguments"
+
+program_required "inotifywait" ""
 
 [ -z "$verbose" ] || quiet=
 
