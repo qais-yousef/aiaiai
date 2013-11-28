@@ -105,9 +105,11 @@ move_to_series()
 	local file="$1"; shift
 	local dir="$1"; shift
 	local n="$1"; shift
+	local subj
+	local m
 
-	local subj="$(fetch_header_or_die "Subject" < "$file")"
-	local m="$(subject_m "$subj")"
+	fetch_header_or_die subj "Subject" < "$file"
+	m="$(subject_m "$subj")"
 
 	message "Moving patch (\"$subj\") the series directory"
 
