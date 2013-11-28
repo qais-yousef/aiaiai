@@ -73,13 +73,27 @@ Let's briefly review the contents of the repository.
     describes the projects Aiaiai supports and their parameters. Take a
     look inside - the file is self-descriptive.
 
-To recap. When you send an e-mail to Aiaiai, the servers' MTA (postfix)
-pipes it to 'aiaiai-email-lda', which will first collects all the patches
-belonging to this patch-sets, and when it has all of them, it squashes them
-into one mbox file and moves it to the queue directory. This will wake up the
-'aiaiai-email-dispatcher' script, which will execute
-'aiaiai-email-test-patchset' for this mbox (unless there are already too many
-jobs, in which case it will wait).
+Here is how all these scripts work together.  When you send an e-mail to the
+server which runs Aiaiai, the MTA pipes it to 'aiaiai-email-lda'. We used the
+postfix MTA, and the 'aiaiai' Linux user had the following file in its home
+directory:
+
+$ cat $HOME/.forward
+|/home/aiaiai/bin/my-aiaiai-lda
+
+Which made sure that all e-mails coming to aiaiai@our-domain.ququ were piped
+to the my-aiaiai-lda script. The script simply ran aiaiai-email-lda with
+tje options we needed:
+
+$ cat /home/aiaiai/bin/my-aiaiai-lda
+$HOME/git/email/aiaiai-email-lda -v --reap-archive=43200 --reap-incomplete=10 -- $HOME/aiaiai-workdir >> $HOME/aiaiai-logs/email-lda.log" 2>&1
+
+
+So, aiaiai-email-lda collects patches belonging to the patch-sets, and when it
+has all of them, it squashes them into one mbox file and moves them to the
+queue directory. This will wake up the 'aiaiai-email-dispatcher' script, which
+will execute 'aiaiai-email-test-patchset' for this mbox (unless there are
+already too many jobs, in which case it will wait).
 
 The 'aiaiai-email-test-patchset' will parse the patch-set, find out which
 kernel it has to be tested against using the configuration file, send a
