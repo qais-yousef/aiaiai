@@ -11,7 +11,7 @@ srcdir="$(readlink -ev -- ${0%/*})"
 PATH="$srcdir/..:$srcdir/../external/libshell:$PATH"
 
 . shell-error
-. aiaiai-sh-functions
+. email/aiaiai-email-sh-functions
 
 PROG="${0##*/}"
 

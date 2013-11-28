@@ -11,6 +11,7 @@ PATH="$srcdir:$srcdir/email:$srcdir/external/libshell:$PATH"
 . shell-args
 . shell-signal
 . aiaiai-sh-functions
+. aiaiai-email-sh-functions
 
 PROG="${0##*/}"
 message_time="yes"

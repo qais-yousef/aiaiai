@@ -1,0 +1,52 @@
+#!/bin/sh -efu
+
+# Copyright 2011-2013 Intel Corporation
+# Author: Artem Bityutskiy
+# License: GPLv2
+
+. shell-error
+
+# All patches we deal with have to have the following prefix
+prefix_format="[Prefix PATCH Suffix <m/n>]"
+
+# A single blank character
+__blank="[[:blank:]]{1}"
+# Reasonable number of blanks
+__blanks="[[:blank:]]{0,16}"
+# Reasonable number of [blah] prefixes
+__blah="(\[[^]]*\]${__blanks}){0,4}"
+# The prefix
+__prefix="${__blanks}([^[:blank:]]*${__blanks}${__blank})?"
+# Patch number pattern
+__num="0*([[:digit:]]+)"
+# The "PATCH" word for case-insensitive matching
+__patch="[Pp][Aa][Tt][Cc][Hh]"
+# Sed regexp matching correct subject
+__single="^${__blah}\[${__prefix}${__patch}.*\].*$"
+# Sed regexps matching m and n
+__series="^${__blah}\[${__prefix}${__patch}.*${__blank}${__num}\/?${__num}${__blanks}\].*$"
+__mref="\3"
+__nref="\4"
+
+# Get "m" (patch's number in the series) from the subject
+# Usage: subject_m <subject>
+subject_m()
+{
+	local subj="$1"
+	printf "%s" "$subj" | LC_ALL=C sed -n -E "s/$__series/$__mref/p"
+}
+
+# Get "n" (count of patches in the series)  from the subject
+# Usage: subject_n <subject>
+subject_n()
+{
+	local subj="$1"
+	printf "%s" "$subj" | LC_ALL=C sed -n -E "s/$__series/$__nref/p"
+}
+
+# Check that the subject has the correct format
+# Usage: check_subject <subject>
+subject_check()
+{
+	[ -n "$(printf "%s" "$1" | LC_ALL=C sed -n -E "/$__single/ p")" ]
+}
