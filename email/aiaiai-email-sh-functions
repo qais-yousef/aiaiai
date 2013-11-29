@@ -156,21 +156,17 @@ parse_prj_config()
 	cfg_unwanted_keywords="$(ini_config_get "$cfgfile" ""prj_$prj"" "unwanted_keywords")"
 }
 
-# Send an e-mail reply. This function assumes that the following variables are
-# defined: cfg_ownname, cfg_ownmail, cfg_adminname, cfg_adminmail,
-# cfg_preamble, cfg_signature. See "parse_config()" function.
+# Compose (but not send) e-mail reply. This function assumes that the following
+# variables are defined: cfg_ownname, cfg_ownmail, cfg_adminname,
+# cfg_adminmail, cfg_preamble, cfg_signature. See "parse_config()" function.
 #
-# Usage: compose_email <to> <cc> <subj> <in_reply_to> <tmpfile>
-#
-# The "tmpfile" parameter is a file where this function will store a copy of
-# the send e-mail.
+# Usage: compose_email <to> <cc> <subj> <in_reply_to>
 compose_email()
 {
 	local to="$1"; shift
 	local cc="$1"; shift
 	local subj="$1"; shift
 	local in_reply_to="$1"; shift
-	local tmpfile="$1"; shift
 
 	if [ -n "$cc" ]; then
 		# A newline characters
@@ -182,7 +178,7 @@ compose_email()
 		cc="$__newline$cc"
 	fi
 
-	cat > "$tmpfile" <<EOF
+	cat <<EOF
 To: $to
 From: "$cfg_ownname" <$cfg_ownmail>$cc
 Subject: Re: $subj
@@ -196,10 +192,4 @@ $(cat)
 --
 $cfg_signature
 EOF
-
-	[ -z "$verbose" ] || cat -- "$tmpfile" >&2
-	[ -z "$test_mode" ] &&
-		mutt -x -H "$tmpdir/mail" </dev/null ||
-		verbose "Do not actually send the email - we are in test mode"
 }
-
