@@ -48,7 +48,7 @@ get_file_to_check()
 {
 	# The file name is the last argument
 	for file; do true; done
-	echo "$file"
+	printf "%s" "$file"
 }
 
 # Check the file against all the coccinelle scripts we have
