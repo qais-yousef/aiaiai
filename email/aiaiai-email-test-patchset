@@ -70,34 +70,6 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-# Send a reply to the author of the patch, the contents of the reply has to
-# come from stdin
-compose_email()
-{
-	cat > "$tmpdir/mail" <<EOF
-To: $from
-From: "$cfg_ownname" <$cfg_ownmail>
-Cc: $cfg_always_cc
-Cc: $to
-Cc: $cc
-Subject: Re: $subj
-In-Reply-To: $id
-Reply-To: "$cfg_adminname" <$cfg_adminmail>
-
-$cfg_preamble
-
-$(cat)
-
---
-$cfg_signature
-EOF
-
-	[ -z "$verbose" ] || cat -- "$tmpdir/mail" >&2
-	[ -z "$test_mode" ] &&
-		mutt -x -H "$tmpdir/mail" </dev/null ||
-		verbose "Do not actually send the email - we are in test mode"
-}
-
 # List projects currently supported
 list_projects()
 {
@@ -228,10 +200,7 @@ cc=$(strip_address "$cc")
 
 # Reject the e-mail if the project has not been specified
 if [ -z "$prj" ]; then
-	to=
-	cc=
-	cfg_always_cc=
-	compose_email <<EOF
+	compose_email "$from" "" "" "$subj" "$id" "$tmpdir/mail" <<EOF
 Sorry, but you have not specified the project name. Please, specify it
 using symbol "+" in the e-mail address of $ownname.
 
@@ -249,10 +218,7 @@ parse_prj_config "$cfgfile" "$prj"
 
 # Check if we have this project in our config file
 if [ -z "$cfg_name" ]; then
-	to=
-	cc=
-	cfg_always_cc=
-	compose_email <<EOF
+	compose_email "$from" "" "" "$subj" "$id" "$tmpdir/mail" <<EOF
 Sorry, but project "$prj" is not supported. List of projects $cfg_ownname supports:
 
 $(list_projects)
@@ -270,7 +236,7 @@ fi
 # Notify the sender that the patches have been accepted
 if [ "$cfg_accept_notify" = "1" ]; then
 	message "Sending \"accepted\" e-mail"
-	compose_email <<EOF
+	compose_email "$from" "$to" "$cc" "$subj" "$id" "$tmpdir/mail" <<EOF
 Your patch or patch-set:
 
 $(fetch_header_per_patch "Subject" < "$mbox" | sort)
@@ -288,7 +254,7 @@ aiaiai-test-patchset $verbose $preserve $bisectability $sparse $smatch $cppcheck
 	"$cfg_path" "$cfg_configs" > "$tmpdir/test-patchset.log" ||
 {
 	message "aiaiai-test-patchset failed"
-	compose_email <<EOF
+	compose_email "$from" "$to" "$cc" "$subj" "$id" "$tmpdir/mail" <<EOF
 Sorry, but an internal error happened. Please, send a bug report to
 "$cfg_adminname" <$cfg_adminmail>.
 EOF
@@ -297,7 +263,7 @@ EOF
 
 message "Test is finished, sending back the results"
 
-compose_email <<EOF
+compose_email "$from" "$to" "$cc" "$subj" "$id" "$tmpdir/mail" <<EOF
 $cfg_built_preamble
 
 $(fetch_header_per_patch "Subject" < "$mbox" | sort)
