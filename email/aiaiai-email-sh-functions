@@ -5,6 +5,8 @@
 # License: GPLv2
 
 . shell-error
+. shell-ini-config
+. shell-quote
 
 # All patches we deal with have to have the following prefix
 prefix_format="[Prefix PATCH Suffix <m/n>]"
@@ -51,9 +53,23 @@ subject_check()
 	[ -n "$(printf "%s" "$1" | LC_ALL=C sed -n -E "/$__single/ p")" ]
 }
 
+# Strip an e-mail address from the comma-separated list of e-mail addresses
+# Usage: strip_address <list> <email>
+strip_address()
+{
+	local list="$1"
+
+	# Quote special sed symbols
+	quote_sed_regexp_variable ol "$cfg_ownmail_local"
+	quote_sed_regexp_variable od "$cfg_ownmail_domain"
+
+	printf "%s" "$list" | LC_ALL=C sed -e "s/[^,]*$ol+\{0,1\}[^@]*@$od[^,]*//g" \
+					   -e "s/,,/,/g" -e "s/^,//" -e "s/,$//"
+}
+
 # A helper function for 'init_config_get' which fails when unable to get the
 # ini file option.
-ini_config_get_or_die()
+__ini_config_get_or_die()
 {
 	local var="$1"; shift
 	local result="$(ini_config_get "$1" "$2" "$3")"
@@ -62,4 +78,59 @@ ini_config_get_or_die()
 		fatal "Could not find config option \"$2.$3\" in \"$1\""
 
 	eval "$var=\"\$result\""
+}
+
+# Parse the "global" and "email" sections of the config file. The result is a
+# set of per-option variables and their values are exactly as in the
+# configuration file: cfg_ownname, cfg_ownmail, cfg_adminname, cfg_adminmail,
+# cfg_workdir, cfg_jobs, cfg_signature, cfg_built_preamble.
+#
+# Additinally, the following variables are defined:
+#   o cfg_preamble - contains the email preamble read from the file definded
+#     in email.preamble variable
+#
+# Usage: parse_config <cfgfile>
+parse_config()
+{
+	local cfgfile="$1"
+
+	__ini_config_get_or_die cfg_ownname   "$cfgfile" "global" "ownname"
+	__ini_config_get_or_die cfg_ownmail   "$cfgfile" "global" "ownmail"
+	__ini_config_get_or_die cfg_adminmail "$cfgfile" "global" "adminmail"
+	__ini_config_get_or_die cfg_adminname "$cfgfile" "global" "adminname"
+	__ini_config_get_or_die cfg_workdir   "$cfgfile" "global" "workdir"
+	__ini_config_get_or_die cfg_jobs      "$cfgfile" "global" "jobs"
+
+	__ini_config_get_or_die cfg_signature      "$cfgfile" "email" "signature"
+	__ini_config_get_or_die cfg_preamble       "$cfgfile" "email" "preamble"
+	__ini_config_get_or_die cfg_built_preamble "$cfgfile" "email" "built_preamble"
+
+	cfg_preamble="$(cat "$cfg_preamble")"
+
+	# Get the local and domain parts of own e-mail address
+	cfg_ownmail_local="$(printf "%s" "$cfg_ownmail"  | LC_ALL=C sed 's/@.*//g')"
+	cfg_ownmail_domain="$(printf "%s" "$cfg_ownmail" | LC_ALL=C sed 's/.*@//g')"
+}
+
+# Similar to 'parse_config', but parses a project configuration section. If the
+# project is found, the following variables are defined: cfg_name. cfg_descr,
+# cfg_path, cfg_configs, cfg_branch, cfg_reply_to_all, cfg_accept_notify,
+# cfg_always_cc, cfg_unwanted_keywords. If the project is not found, this
+# function only defined an empty "cfg_name" variable.
+#
+# Usage: parse_prj_config <cfgfile> <prj>
+parse_prj_config()
+{
+	cfg_name="$(ini_config_get "$cfgfile" "prj_$prj" "name")"
+	[ -n "$cfg_name" ] || return
+
+	__ini_config_get_or_die cfg_descr         "$cfgfile" "prj_$prj" "description"
+	__ini_config_get_or_die cfg_path          "$cfgfile" "prj_$prj" "path"
+	__ini_config_get_or_die cfg_configs       "$cfgfile" "prj_$prj" "configs"
+	__ini_config_get_or_die cfg_branch        "$cfgfile" "prj_$prj" "branch"
+	__ini_config_get_or_die cfg_reply_to_all  "$cfgfile" "prj_$prj" "reply_to_all"
+	__ini_config_get_or_die cfg_accept_notify "$cfgfile" "prj_$prj" "accept_notify"
+
+	cfg_always_cc="$(ini_config_get "$cfgfile" "prj_$prj" "always_cc")"
+	cfg_unwanted_keywords="$(ini_config_get "$cfgfile" ""prj_$prj"" "unwanted_keywords")"
 }

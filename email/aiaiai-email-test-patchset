@@ -10,9 +10,8 @@ PATH="$srcdir:$srcdir/email:$srcdir/external/libshell:$PATH"
 . shell-error
 . shell-args
 . shell-signal
-. shell-ini-config
-. shell-quote
 . aiaiai-sh-functions
+. aiaiai-email-sh-functions
 
 PROG="${0##*/}"
 export message_time="yes"
@@ -77,20 +76,20 @@ compose_email()
 {
 	cat > "$tmpdir/mail" <<EOF
 To: $from
-From: "$ownname" <$ownmail>
-Cc: $always_cc
+From: "$cfg_ownname" <$cfg_ownmail>
+Cc: $cfg_always_cc
 Cc: $to
 Cc: $cc
 Subject: Re: $subj
 In-Reply-To: $id
-Reply-To: "$adminname" <$adminmail>
+Reply-To: "$cfg_adminname" <$cfg_adminmail>
 
-$preamble
+$cfg_preamble
 
 $(cat)
 
 --
-$signature
+$cfg_signature
 EOF
 
 	[ -z "$verbose" ] || cat -- "$tmpdir/mail" >&2
@@ -105,24 +104,8 @@ list_projects()
 	local prj
 
 	LC_ALL=C sed -n -e "s/^\[prj_\(.*\)\]$/\1/p" "$cfgfile" | while read -r prj; do
-		local prj_descr
-		ini_config_get_or_die prj_descr "$cfgfile" "prj_$prj" "description"
-		printf "* %s\n" "$ownmail_local+$prj@$ownmail_domain: $prj_descr"
+		printf "* %s\n" "$cfg_ownmail_local+$prj@$cfg_ownmail_domain: $cfg_descr"
 	done
-}
-
-# Strip an e-mail address from the comma-separated list of e-mail addresses
-# Usage: strip_address <list> <email>
-strip_address()
-{
-	local list="$1"
-
-	# Quote special sed symbols
-	quote_sed_regexp_variable ol "$ownmail_local"
-	quote_sed_regexp_variable od "$ownmail_domain"
-
-	printf "%s" "$list" | LC_ALL=C sed -e "s/[^,]*$ol+\{0,1\}[^@]*@$od[^,]*//g" \
-					   -e "s/,,/,/g" -e "s/^,//" -e "s/,$//"
 }
 
 # Fetch project name from the e-mail address. The project is specified like
@@ -134,8 +117,8 @@ project_name()
 	local ol od
 
 	# Quote special sed symbols
-	quote_sed_regexp_variable ol "$ownmail_local"
-	quote_sed_regexp_variable od "$ownmail_domain"
+	quote_sed_regexp_variable ol "$cfg_ownmail_local"
+	quote_sed_regexp_variable od "$cfg_ownmail_domain"
 
 	printf "%s" "$list" | LC_ALL=C sed -n -e "s/.*$ol+\([^@]\+\)@$od.*/\1/p" | head -n1
 }
@@ -215,29 +198,15 @@ msgname="$from: $subj (Message-Id: $id)"
 
 echo >&2
 message "Testing mbox: \"$msgname\""
+message "parsing config file \"$cfgfile\""
 
-# Fetch global configuration options
-ini_config_get_or_die ownname "$cfgfile" "global" "ownname"
-ini_config_get_or_die ownmail "$cfgfile" "global" "ownmail"
-ini_config_get_or_die adminmail "$cfgfile" "global" "adminmail"
-ini_config_get_or_die adminname "$cfgfile" "global" "adminname"
-ini_config_get_or_die jobs "$cfgfile" "global" "jobs"
-ini_config_get_or_die workdir "$cfgfile" "global" "workdir"
+parse_config "$cfgfile"
 
-mkdir $verbose -p -- "$workdir" >&2
+mkdir $verbose -p -- "$cfg_workdir" >&2
 
-tmpdir="$(mktemp --tmpdir="$workdir" -dt "$PROG.XXXX")"
+tmpdir="$(mktemp --tmpdir="$cfg_workdir" -dt "$PROG.XXXX")"
 mv $verbose -- "$mbox" "$tmpdir/mbox" >&2
 mbox="$tmpdir/mbox"
-
-# Fetch e-mail configuration
-ini_config_get_or_die signature "$cfgfile" "email" "signature"
-ini_config_get_or_die preamble "$cfgfile" "email" "preamble"
-preamble="$(cat "$preamble")"
-
-# Separate out the local and domain parts of own e-mail address
-ownmail_local="$(printf "%s" "$ownmail"  | LC_ALL=C sed 's/@.*//g')"
-ownmail_domain="$(printf "%s" "$ownmail" | LC_ALL=C sed 's/.*@//g')"
 
 to="$(fetch_header "To" < "$mbox")"
 cc="$(fetch_header "Cc" < "$mbox")"
@@ -251,6 +220,8 @@ fi
 prj="$(project_name "$to")"
 [ -n "$prj" ] || prj="$(project_name "$cc")"
 
+verbose "Project \"$prj\""
+
 # Strip own address
 to=$(strip_address "$to")
 cc=$(strip_address "$cc")
@@ -259,55 +230,45 @@ cc=$(strip_address "$cc")
 if [ -z "$prj" ]; then
 	to=
 	cc=
-	always_cc=
+	cfg_always_cc=
 	compose_email <<EOF
 Sorry, but you have not specified the project name. Please, specify it
 using symbol "+" in the e-mail address of $ownname.
 
-List of projects $ownname supports:
+List of projects $cfg_ownname supports:
 
 $(list_projects)
 
-If you have questions, please contact "$adminname" <$adminmail>.
+If you have questions, please contact "$cfg_adminname" <$cfg_adminmail>.
 EOF
 	exit 0
 fi
 
-verbose "Project \"$prj\""
+# Fetch project configuration
+parse_prj_config "$cfgfile" "$prj"
 
 # Check if we have this project in our config file
-prj_name="$(ini_config_get "$cfgfile" "prj_$prj" "name")"
-if [ -z "$prj_name" ]; then
+if [ -z "$cfg_name" ]; then
 	to=
 	cc=
-	always_cc=
+	cfg_always_cc=
 	compose_email <<EOF
-Sorry, but project "$prj" is not supported. List of projects $ownname supports:
+Sorry, but project "$prj" is not supported. List of projects $cfg_ownname supports:
 
 $(list_projects)
 
-If you have questions, please contact "$adminname" <$adminmail>.
+If you have questions, please contact "$cfg_adminname" <$cfg_adminmail>.
 EOF
 	exit 0
 fi
 
-# Fetch project-specific information
-ini_config_get_or_die prj_descr "$cfgfile" "prj_$prj" "description"
-ini_config_get_or_die defconfigs "$cfgfile" "prj_$prj" "configs"
-ini_config_get_or_die branch "$cfgfile" "prj_$prj" "branch"
-ini_config_get_or_die kernel_dir "$cfgfile" "prj_$prj" "path"
-ini_config_get_or_die reply_to_all "$cfgfile" "prj_$prj" "reply_to_all"
-ini_config_get_or_die accept_notify "$cfgfile" "prj_$prj" "accept_notify"
-always_cc="$(ini_config_get "$cfgfile" "prj_$prj" "always_cc")"
-keywords="$(ini_config_get "$cfgfile" ""prj_$prj"" "unwanted_keywords")"
-
-if [ "$reply_to_all" != "1" ]; then
+if [ "$cfg_reply_to_all" != "1" ]; then
 	to=
 	cc=
 fi
 
 # Notify the sender that the patches have been accepted
-if [ "$accept_notify" = "1" ]; then
+if [ "$cfg_accept_notify" = "1" ]; then
 	message "Sending \"accepted\" e-mail"
 	compose_email <<EOF
 Your patch or patch-set:
@@ -319,33 +280,31 @@ EOF
 fi
 
 # Test the path (or patch-set)
-message "Test configs \"$defconfigs\" branch \"$branch\" of \"$kernel_dir\""
+message "Test configs \"$cfg_configs\" branch \"$cfg_branch\" of \"$cfg_path\""
 aiaiai-test-patchset $verbose $preserve $bisectability $sparse $smatch $cppcheck $coccinelle \
-	-i "$mbox" -j "$jobs" -c "$branch" -w "$tmpdir" \
+	-i "$mbox" -j "$cfg_jobs" -c "$cfg_branch" -w "$tmpdir" \
 	${confdir:+-C "$confdir"} \
-	${keywords:+-K "$keywords"} -- \
-	"$kernel_dir" "$defconfigs" > "$tmpdir/test-patchset.log" ||
+	${cfg_unwanted_keywords:+-K "$cfg_unwanted_keywords"} -- \
+	"$cfg_path" "$cfg_configs" > "$tmpdir/test-patchset.log" ||
 {
 	message "aiaiai-test-patchset failed"
 	compose_email <<EOF
 Sorry, but an internal error happened. Please, send a bug report to
-"$adminname" <$adminmail>.
+"$cfg_adminname" <$cfg_adminmail>.
 EOF
 	exit 0
 }
 
 message "Test is finished, sending back the results"
 
-ini_config_get_or_die built_preamble "$cfgfile" "email" "built_preamble"
-
 compose_email <<EOF
-$built_preamble
+$cfg_built_preamble
 
 $(fetch_header_per_patch "Subject" < "$mbox" | sort)
 
-Project: $prj_name ($prj_descr)
+Project: $cfg_name ($cfg_descr)
 
-Configurations: $defconfigs
+Configurations: $cfg_configs
 
 $(cat -- $tmpdir/test-patchset.log)
 EOF
