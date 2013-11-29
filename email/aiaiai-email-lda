@@ -30,7 +30,14 @@ yet complete patch series.
 Additionally, this program stores all the incoming mail in the
 "<workdir>/mail" mail archive.
 
+The "<config.ini>" file is the same file which "aiaiai-email-test-patchest"
+uses. When this program receives an invalid e-mail (not a patch, invalid
+subject, etc), it sends an e-mail notifications back. The "<config.ini>" file
+is required for extracting basic information for sending the notifications (own
+e-mail address, etc).
+
 <workdir>              - the working directory.
+<cfgfile.ini>          - the configuration file.
 
 Options:
       --reap-archive=MIN     remove all files created earlier than MIN
@@ -296,9 +303,12 @@ while true; do
 	shift
 done
 
-[ "$#" -eq 1 ] || fatal "Insufficient or too many arguments"
+[ "$#" -eq 2 ] || fatal "Insufficient or too many arguments"
 
-workdir=$(readlink -fv -- "$1");
+workdir=$(readlink -fv -- "$1"); shift
+cfgfile=$(readlink -fv -- "$1"); shift
+
+parse_config "$cfgfile"
 
 lda_tmp="$workdir/lda_tmp"
 mkdir -p $verbose -- "$lda_tmp" >&2
