@@ -80,21 +80,6 @@ list_projects()
 	done
 }
 
-# Fetch project name from the e-mail address. The project is specified like
-# this: local+project@domain
-# Usage: project_name <list>
-project_name()
-{
-	local list="$1"
-	local ol od
-
-	# Quote special sed symbols
-	quote_sed_regexp_variable ol "$cfg_ownmail_local"
-	quote_sed_regexp_variable od "$cfg_ownmail_domain"
-
-	printf "%s" "$list" | LC_ALL=C sed -n -e "s/.*$ol+\([^@]\+\)@$od.*/\1/p" | head -n1
-}
-
 # Send an e-mail reply to the patch author.
 # Usage: send_email
 send_email()
@@ -209,7 +194,7 @@ if [ -z "$to" ] && [ -z "$cc" ]; then
 fi
 
 # Find out the project name
-prj="$(project_name "$to")"
+prj="$(fetch_project_name "$to" "$cfg_ownmail")"
 
 verbose "Project \"$prj\""
 
@@ -219,8 +204,6 @@ parse_prj_config "$cfgfile" "$prj"
 # Merge the "To" and "Cc" addresses
 to="$(merge_addresses "$to" "$cc")"
 
-# If we are not going to reply to everywone, we do not need to the To/Cc
-# addresses
 if [ "$cfg_reply_to_all" != "1" ]; then
 	to=
 else

@@ -88,7 +88,22 @@ reject_and_reply()
 	fetch_header_or_die from "From" < "$file"
 	fetch_header_or_die id "Message-Id" < "$file"
 
-	compose_email "$from" "" "$subj" "$id" > "$lda_tmp/mail"
+	to="$(fetch_header "To" < "$mbox")"
+	cc="$(fetch_header "Cc" < "$mbox")"
+	to="$(merge_addresses "$to" "$cc")"
+
+	prj="$(fetch_project_name "$to" "$cfg_ownmail")"
+	verbose "Project \"$prj\""
+	parse_prj_config "$cfgfile" "$prj"
+
+	if [ -n "$cfg_name" ] && [ "$cfg_reply_to_all" == "1" ]; then
+		# Strip own address
+		to=$(strip_address "$to" "$cfg_ownmail")
+	else
+		to=
+	fi
+
+	compose_email "$from" "$to" "$subj" "$id" > "$lda_tmp/mail"
 
 	[ -z "$verbose" ] || cat -- "$lda_tmp/mail" >&2
 

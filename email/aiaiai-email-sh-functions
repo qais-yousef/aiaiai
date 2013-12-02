@@ -76,6 +76,27 @@ strip_address()
 					   -e "s/[[:blank:]]\+//g"
 }
 
+# Fetch project name from a list of e-mail address. The project is specified like
+# this: local+project@domain, and the second parameter is the 'local@domain'
+# part.
+# Usage: fetch_project_name <list> <email>
+fetch_project_name()
+{
+	local list="$1"; shift
+	local email="$1"; shift
+	local l d
+
+	# Get the local and domain parts of the e-mail address
+	l="$(printf "%s" "$email" | LC_ALL=C sed "s/@.*//g")"
+	d="$(printf "%s" "$email" | LC_ALL=C sed "s/.*@//g")"
+
+	# Quote special sed symbols
+	quote_sed_regexp_variable l "$l"
+	quote_sed_regexp_variable d "$d"
+
+	printf "%s" "$list" | LC_ALL=C sed -n -e "s/.*$l+\([^@]\+\)@$d.*/\1/p" | head -n1
+}
+
 # Merge e-mail addresses into a comma-separated list
 # Usage: merge_addresses "addr1" "addr2"
 merge_addresses()
@@ -143,7 +164,7 @@ parse_config()
 parse_prj_config()
 {
 	cfg_name="$(ini_config_get "$cfgfile" "prj_$prj" "name")"
-	[ -n "$cfg_name" ] || return
+	[ -n "$cfg_name" ] || return 0
 
 	__ini_config_get_or_die cfg_descr         "$cfgfile" "prj_$prj" "description"
 	__ini_config_get_or_die cfg_path          "$cfgfile" "prj_$prj" "path"
