@@ -6,6 +6,9 @@
 
 . shell-error
 
+if [ -z "${__included_aiaiai_sh_functions-}" ]; then
+__included_aiaiai_sh_functions=1
+
 # Print a separator line to stdout
 print_separator()
 {
@@ -202,3 +205,5 @@ leave_third()
 {
 	leave_second "$(strip_first "$1")"
 }
+
+fi #__included_aiaiai_sh_functions

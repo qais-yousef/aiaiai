@@ -8,6 +8,9 @@
 . shell-ini-config
 . shell-quote
 
+if [ -z "${__included_aiaiai_email_sh_functions-}" ]; then
+__included_aiaiai_email_sh_functions=1
+
 # All patches we deal with have to have the following prefix
 prefix_format="[Prefix PATCH Suffix <m/n>]"
 
@@ -214,3 +217,5 @@ $(cat)
 $cfg_signature
 EOF
 }
+
+fi #__included_aiaiai_email_sh_functions
