@@ -75,6 +75,30 @@ reject()
 	rm $verbose -- "$file" >&2
 }
 
+reject_and_reply()
+{
+	local file="$1"; shift
+	local subj
+	local from
+	local id
+	local to
+	local cc
+
+	fetch_header_or_die subj "Subject" < "$file"
+	fetch_header_or_die from "From" < "$file"
+	fetch_header_or_die id "Message-Id" < "$file"
+
+	compose_email "$from" "" "$subj" "$id" > "$lda_tmp/mail"
+
+	[ -z "$verbose" ] || cat -- "$lda_tmp/mail" >&2
+
+	if [ -z "$test_mode" ]; then
+		mutt -x -H "$lda_tmp/mail" </dev/null
+	else
+		verbose "Do not actually send the email - we are in test mode"
+	fi
+}
+
 # Generate unique name - a bit more readable than mktemp creates. We assume
 # that we exclusively own the directory where we create the temporary file.
 seq_name()
@@ -148,7 +172,23 @@ process_series_mbox()
 	# Only patch 1/n is allowed to have no parent
 	local parent_id="$(fetch_header "In-Reply-To" < "$mbox")"
 	if [ -z "$parent_id" ] && [ "$m" != 1 ]; then
-		reject "$mbox" "In-Reply-To header not found"
+		reject_and_reply "$mbox" <<EOF
+You sent a patch that does not conform to the requirements for Aiaiai's Local
+Delivery Agent. This patch is part of a series as indicated by its subject
+prefix.  However, it does not contain the correct "In-Reply-To:" header which
+is required for Aiaiai to determine which patch series it belongs with.
+
+The most common reason for this issue is from not using the git-send-email
+utility, and using your own script which does not generate proper In-Reply-To:
+header chains.
+
+If you do use your own email commands, please add "--thread" to your
+git-format-patch commands, in order to ensure that the patch series
+contains proper threading.
+
+If you do not understand this email, or believe you have received this email in
+error, please contact "$cfg_adminname" <$cfg_adminmail>.
+EOF
 		return
 	fi
 
@@ -277,7 +317,7 @@ TEMP=`getopt -n $PROG -o v,h --long test-mode,reap-archive:,reap-incomplete:,ver
 	fail_usage ""
 eval set -- "$TEMP"
 
-test_mode=y
+test_mode=
 archive_min=
 incomplete_min=
 verbose=
@@ -310,6 +350,12 @@ while true; do
 done
 
 [ "$#" -eq 2 ] || fatal "Insufficient or too many arguments"
+
+program_required "mutt" ""
+program_required "find" ""
+program_required "grep" ""
+program_required "sed" ""
+program_required "formail" ""
 
 workdir=$(readlink -fv -- "$1"); shift
 cfgfile=$(readlink -fv -- "$1"); shift

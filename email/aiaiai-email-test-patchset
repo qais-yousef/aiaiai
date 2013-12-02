@@ -171,6 +171,9 @@ done
 [ "$#" -eq 1 ] || fatal "Insufficient or too many arguments"
 
 program_required "mutt" ""
+program_required "grep" ""
+program_required "sed" ""
+program_required "formail" ""
 
 cfgfile="$1"; shift
 
