@@ -44,6 +44,8 @@ Options:
                              minutes ago from the mail archive directory;
       --reap-incomplete=MIN  remove all incomplete patch series older than
                              current time minus MIN minutes;
+      --test-mode            test mode - work as usually, but do not send
+                             replies;
   -v, --verbose              be verbose;
   -h, --help                 show this text and exit.
 EOF
@@ -271,16 +273,20 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o v,h --long reap-archive:,reap-incomplete:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o v,h --long test-mode,reap-archive:,reap-incomplete:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
+test_mode=y
 archive_min=
 incomplete_min=
 verbose=
 
 while true; do
 	case "$1" in
+	--test-mode)
+		test_mode=y
+		;;
 	--reap-archive)
 		archive_min=$(opt_check_number "$1" "$2")
 		shift
