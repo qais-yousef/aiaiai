@@ -154,14 +154,14 @@ test_configuration()
 
 	if [ -n "$confdir" ]; then
 		defconfig="$confdir/$defconfig"
-		[ -f "$defconfig" ] || fatal "$defconfig is not available"
+		[ -f "$defconfig" ] || die "$defconfig is not available"
 	fi
 
 	if [ -n "$bisectability" ]; then
 		# We share the same source tree with 'aiaiai-test-bisectability', so
 		# wait for it (it could be run at the previous iteration)
 		if [ -n "$pid_bisect" ]; then
-			wait "$pid_bisect" || fatal "aiaiai-test-bisectability failed"
+			wait "$pid_bisect" || die "aiaiai-test-bisectability failed"
 			pid_bisect=
 		fi
 
@@ -325,7 +325,7 @@ while true; do
 	shift
 done
 
-[ "$#" -ge 2 ] || fatal 'Insufficient arguments'
+[ "$#" -ge 2 ] || die "Insufficient arguments"
 
 kernel_tree="$(readlink -ev -- "$1")"; shift
 defconfigs="$@"
@@ -433,9 +433,9 @@ for defconfig in $defconfigs; do
 	test_configuration "$defconfig"
 done
 
-wait "$pid_checkpatch" || fatal "checkpatch failed"
-[ -z "$keywords" ]     || wait "$pid_keywords" || fatal "aiaiai-match-keywords failed"
-[ -z "$pid_bisect" ]   || wait "$pid_bisect"   || fatal "aiaiai-test-bisectability failed"
+wait "$pid_checkpatch" || die "checkpatch failed"
+[ -z "$keywords" ]     || wait "$pid_keywords" || die "aiaiai-match-keywords failed"
+[ -z "$pid_bisect" ]   || wait "$pid_bisect"   || die "aiaiai-test-bisectability failed"
 
 # Print the results
 

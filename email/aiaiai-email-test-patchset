@@ -153,7 +153,7 @@ while true; do
 	shift
 done
 
-[ "$#" -eq 1 ] || fatal "Insufficient or too many arguments"
+[ "$#" -eq 1 ] || die "Insufficient or too many arguments"
 
 program_required "mutt" ""
 program_required "grep" ""
@@ -190,7 +190,7 @@ cc="$(fetch_header "Cc" < "$mbox")"
 
 # Either "To:" or "Cc:" must exist
 if [ -z "$to" ] && [ -z "$cc" ]; then
-       fatal "Neither \"To:\" nor \"Cc:\" header found"
+       die "Neither \"To:\" nor \"Cc:\" header found"
 fi
 
 # Find out the project name

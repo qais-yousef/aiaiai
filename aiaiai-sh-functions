@@ -9,6 +9,13 @@
 if [ -z "${__included_aiaiai_sh_functions-}" ]; then
 __included_aiaiai_sh_functions=1
 
+# Print an error message and exit
+# Usage: die <message>
+die()
+{
+	fatal "Fatal error: $1"
+}
+
 # Print a separator line to stdout
 print_separator()
 {
@@ -31,7 +38,7 @@ program_required()
 	if ! command -v "$prg" >/dev/null 2>&1; then
 		message "Program \"$prg\" is required but not found in PATH"
 		if [ -n "$msg" ]; then
-			fatal "$msg"
+			die "$msg"
 		else
 			exit 1
 		fi
@@ -61,7 +68,7 @@ fetch_header_or_die()
 	local hdr="$1"; shift
 	local res="$(fetch_header "$hdr")"
 
-	[ -n "$res" ] || fatal "Cannot find the \"$hdr:\" header"
+	[ -n "$res" ] || die "Cannot find the \"$hdr:\" header"
 
 	eval "$var=\"\$res\""
 }
@@ -86,7 +93,7 @@ git_dir()
 	elif [ -d "$path" ]; then
 		printf "%s" "$path"
 	else
-		fatal "not a git repository: $path"
+		die "not a git repository: $path"
 	fi
 }
 

@@ -221,7 +221,7 @@ while true; do
 	shift
 done
 
-[ "$#" -ge 2 ] || fatal 'Insufficient arguments'
+[ "$#" -ge 2 ] || die "Insufficient arguments"
 
 program_required "aiaiai-locker" \
 		 "You probably did not compile it, run 'make' in the topmost aiaiai source code directory"

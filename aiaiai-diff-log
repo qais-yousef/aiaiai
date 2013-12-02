@@ -159,7 +159,7 @@ while true; do
 	shift
 done
 
-[ "$#" = 3 ] || fatal 'Insufficient or too many arguments.'
+[ "$#" = 3 ] || die "Insufficient or too many arguments"
 
 program_required "remap-log" \
 		 "You probably did not compile it, run 'make' in the topmost aiaiai source code directory"

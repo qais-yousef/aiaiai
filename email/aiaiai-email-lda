@@ -236,7 +236,7 @@ EOF
 		dir="$(printf "%s" "$series_relatives" | sed -e "s/\(.*\)\/.*/\1/" | sort -u)"
 		message "Found series directory \"$dir\""
 		[ "$(printf "%s" "$dir" | wc -l)" -eq 0 ] ||
-			fatal "Relatives live in different series directories!"
+			die "Relatives live in different series directories!"
 	fi
 
 	# Move the relatives from the staging to the series directory
@@ -364,7 +364,7 @@ while true; do
 	shift
 done
 
-[ "$#" -eq 2 ] || fatal "Insufficient or too many arguments"
+[ "$#" -eq 2 ] || die "Insufficient or too many arguments"
 
 program_required "mutt" ""
 program_required "find" ""
@@ -421,7 +421,7 @@ while IFS= read -r line; do
 				message "The last line of previous mbox is not blank"
 				message "line: $line"
 				message "prev: $prev"
-				fatal "exiting"
+				die "exiting"
 			fi
 			process_mbox
 			truncate -s0 -- "$mbox"

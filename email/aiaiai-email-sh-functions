@@ -120,7 +120,7 @@ __ini_config_get_or_die()
 	local result="$(ini_config_get "$1" "$2" "$3")"
 
 	[ -n "$result" ] ||
-		fatal "Could not find config option \"$2.$3\" in \"$1\""
+		die "Could not find config option \"$2.$3\" in \"$1\""
 
 	eval "$var=\"\$result\""
 }
