@@ -339,6 +339,7 @@ program_required "make" ""
 program_required "patch" ""
 program_required "formail" ""
 program_required "python" ""
+program_required "perl" ""
 program_required "diff" ""
 
 for defconfig in $defconfigs; do
