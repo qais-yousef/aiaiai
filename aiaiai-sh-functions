@@ -140,7 +140,7 @@ __print_build_log()
 
 	cat <<EOF
 Failed to build $commit_nickname: $commit_info
-Configuration: "$config"${arch:+", architecture $arch"}".
+Configuration: "$config${arch:+", architecture $arch"}".
 
 $(cat)
 EOF

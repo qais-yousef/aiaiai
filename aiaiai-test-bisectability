@@ -186,6 +186,7 @@ done
 [ "$#" -eq 2 ] || die "Please, specify exactly 2 arguments - the kernel tree and the configuration"
 
 kernel_tree="$(readlink -ev -- "$1")"; shift
+defconfig_orig="$1"
 defconfig="$(leave_first "$1")";
 arch="$(leave_second "$1")";
 cross="$(leave_third "$1")";
@@ -209,7 +210,7 @@ if [ "$patch_cnt" -le 1 ]; then
 	exit 0;
 fi
 
-verbose "Bisecting $patch_cnt patches for configuration \"$defconfig\""
+verbose "Bisecting $patch_cnt patches for configuration \"$defconfig_orig\""
 
 if [ -z "$dont_clone" ]; then
 	cloned_kernel="$tmpdir/src"
@@ -251,11 +252,11 @@ while [ "$n" -lt "$patch_cnt" ]; do
 	if build_failed "$stderr_log"; then
 		if [ "$n" = 1 ] && [ -n "$base_commit_failed" ]; then
 			# Base commit failed too, report about this
-			build_failure "$defconfig" "$commit_id" \
+			build_failure "$defconfig_orig" "$commit_id" \
 			              "the base commit" < "$base_stderr_log"
 			printf "\n\n"
 		fi
-		build_failure "$defconfig" "HEAD" "patch #$n"< "$stderr_log"
+		build_failure "$defconfig_orig" "HEAD" "patch #$n"< "$stderr_log"
 		exit 0
 	fi
 done
