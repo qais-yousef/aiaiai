@@ -34,7 +34,7 @@ for 'aiaiai-test-patchset'.
 
 Options:
   -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
-  -w, --workdir=WDIR     path to the working directory where the kernel will
+  -w, --workdir=WDIR     path to the work directory where the kernel will
                          be built (default: a temporary directory is created
                          using mktemp);
       --logdir=LOGDIR    build logs will be put to this directory (by default

@@ -36,8 +36,8 @@ subject, etc), it sends an e-mail notifications back. The "<config.ini>" file
 is required for extracting basic information for sending the notifications (own
 e-mail address, etc).
 
-<workdir>              - the working directory.
-<cfgfile.ini>          - the configuration file.
+<workdir>              - the work directory
+<cfgfile.ini>          - the configuration file
 
 Options:
       --reap-archive=MIN     remove all files created earlier than MIN

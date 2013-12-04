@@ -46,7 +46,7 @@ Let's briefly review the contents of the repository.
     This is Aiaiai's local delivery agent script which receives the incoming
     emails from the mail server (via a pipe), procesess them (drops all e-mails
     which do not start with [PATCH*], detects and collects patch-sets), and
-    puts them to the "queue" sub-directory of the working directory. This
+    puts them to the "queue" sub-directory of the work directory. This
     should, in turn, wake up the "aiaiai-email-dispatcher" script which will
     take further care of the patch or patch-set.
 

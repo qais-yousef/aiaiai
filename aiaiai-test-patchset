@@ -56,7 +56,7 @@ Options:
   -c, --commit-id=ID     the commit id to test against (default is the head of
                          the git tree (HEAD));
   -i, --input=MBOX       use the MBOX file instead of stdin;
-  -w, --workdir=WDIR     path to the working directory where the kernel will
+  -w, --workdir=WDIR     path to the work directory where the kernel will
                          be built (default: a temporary directory is created
                          using mktemp);
       --logdir=LOGDIR    build logs will be put to this directory (by default

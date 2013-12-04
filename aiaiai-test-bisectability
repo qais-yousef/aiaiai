@@ -62,7 +62,7 @@ Options:
 			 the <kernel-tree>; this option makes it possible to use
                          a stand-alone defconfig file instead;
   -i, --input=MBOX       use the MBOX file instead of stdin;
-  -w, --workdir=WDIR     path to the working directory where the kernel will
+  -w, --workdir=WDIR     path to the work directory where the kernel will
                          be built (default: a temporary directory is created
                          using mktemp);
   -M, --kmake-opts       additional options to append to the final kernel

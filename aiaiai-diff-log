@@ -24,14 +24,13 @@ Usage: $PROG [options] <patch> <log_before> <log_after>
 
 Compare 2 kernel build logs - before and after <patch> was applied.
 
-<patch>        - the difference between the 2 built kernels
-<log_before>   - build log before <patch> was applied
+<patch>       - the patch which was applied to the "before" kernel
+<log_before>  - build log before <patch> was applied
 <log_after>   - build log after <patch> was applied
 
 Options:
-  -w, --workdir=WDIR     path to the working directory where the kernel will
-                         be built (default: a temporary directory is created
-                         using mktemp);
+  -w, --workdir=WDIR     path to the work directory (default: a temporary
+                         directory is created using mktemp);
   -p, --preserve         preserve all the temporary files - do not clean up;
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
