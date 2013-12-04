@@ -81,9 +81,14 @@ fail_usage()
 	exit 1
 }
 
-compile_test()
+# Apply patch <mbox>, compile the kernel and save build logs at <stdout_log>
+# and <stderr_log>.
+# Usage: compile_patch <mbox> <stdout_log> <stderr_log>
+compile_patch()
 {
 	local file="$1"; shift
+	local stdout_log="$1"; shift
+	local stderr_log="$1"; shift
 	local subj
 
 	fetch_header_or_die subj "Subject" < "$file"
@@ -94,14 +99,8 @@ compile_test()
 	apply_patch < "$file" || exit 0
 
 	aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt -D "$dconf" \
-		-O "$tmpdir/$defconfig.stdout.log" -E "$tmpdir/$defconfig.stderr.log" \
-		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel" all
-	failed="$(tail -n1 -- "$tmpdir/$defconfig.stderr.log")"
-	if [ "$failed" = "FAILURE" ]; then
-		# Failed to build this commit, report and exit
-		build_failure "$defconfig" "HEAD" < "$tmpdir/$defconfig.stderr.log"
-		exit 0
-	fi
+		-O "$stdout_log" -E "$stderr_log" ${kmake_opts:+-M "$kmake_opts"} \
+		-- "$cloned_kernel" all
 }
 
 tmpdir=
@@ -227,18 +226,29 @@ git reset $quiet --hard "$commit_id" >&2
 dconf="$defconfig"
 [ -z "$confdir" ] || dconf="$confdir/$dconf"
 
+base_stdout_log="$tmpdir/$defconfig.base.stdout.log"
+base_stderr_log="$tmpdir/$defconfig.base.stderr.log"
+stdout_log="$tmpdir/$defconfig.stdout.log"
+stderr_log="$tmpdir/$defconfig.stderr.log"
+
 verbose "Building the base tree"
 aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt -D "$dconf" \
-	-O "$tmpdir/$defconfig.stdout.log" -E "$tmpdir/$defconfig.stderr.log" \
+	-O "$base_stdout_log" -E "$base_stderr_log" \
 	${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel" all
-if build_failed "$tmpdir/$defconfig.stderr.log"; then
-	# Failed to build the base commit, report, but don't exit incase the first patch fixes the issue.
-	build_failure "$defconfig" "$commit_id" < "$tmpdir/$defconfig.stderr.log"
+if build_failed "$base_stderr_log"; then
+	# Failed to build the base commit, report, but don't exit in case the
+	# first patch fixes the issue.
+	build_failure "$defconfig" "$commit_id" < "$base_stderr_log"
 fi
 
 n=0
 while [ "$n" -lt "$patch_cnt" ]; do
 	formail +$n -1 -s < "$mbox" > "$tmp_mbox"
-	compile_test "$tmp_mbox"
+	compile_patch "$tmp_mbox" "$stdout_log" "$stderr_log"
 	n="$(($n+1))"
+
+	if build_failed "$stderr_log"; then
+		build_failure "$defconfig" "HEAD" < "$stderr_log"
+		exit 0
+	fi
 done
