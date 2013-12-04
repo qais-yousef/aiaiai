@@ -10,7 +10,7 @@ Licence: GPLv2
 
 # Sorts 2 build logs and compares them. Blocks can be as follows.
 #
-# 1. All consequitive lines starting with the same file prefix belong to one
+# 1a. All consequitive lines starting with the same file prefix belong to one
 # block, e.g.:
 #
 # drivers/s.c:472:22: warning: incorrect type in assignment (different address spaces) [sparse]
@@ -18,6 +18,9 @@ Licence: GPLv2
 # drivers/s.c:472:22:    got void [noderef] <asn:2>* [sparse]
 #
 # (the prefix is "drivers/s.c:472")
+#
+# 1b. All consequitive lines starting with prefix "make:", "make[1]:", etc.
+# These usually belong to build failures.
 #
 # 2. GCC 'In file included from' blocks look like this:
 #
@@ -75,10 +78,16 @@ def gen_blocks(stream):
             btype = "infunc"
             prefix = ""
             block = [line]
-        # file prefixed block (case 1.)
+        # file prefixed block (case 1a.)
         elif re.match("^[^\s]+/[^\s]+:\d+:", line):
             yield block
             prefix = ":".join(line.split(':')[:2])
+            btype = "prefix"
+            block = [line]
+        # file prefixed block (case 1b.)
+        elif re.match("^make(\[\d+\]){0,1}:", line):
+            yield block
+            prefix = line.split(':')[0]
             btype = "prefix"
             block = [line]
         # the rest (case 4.)
