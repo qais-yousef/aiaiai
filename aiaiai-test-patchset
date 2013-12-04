@@ -454,8 +454,10 @@ for defconfig in $defconfigs; do
 	print_separator
 
 	# Make kernel appends a "FAILURE" string at the end when builds fail
+	base_commit_failed=""
 	if build_failed "$log1"; then
-		build_failure "$defconfig" "$commit_id1" < "$log1"
+		build_failure "$defconfig" "$commit_id1" "the base commit" < "$log1"
+		base_commit_failed="yes"
 		print_separator
 	fi
 
@@ -472,10 +474,18 @@ for defconfig in $defconfigs; do
 	fi
 
 	if [ -s "$tmpdir/$defconfig.stderr.diff" ]; then
-		printf "\n%s\n\n" "Successfully built configuration \"$defconfig\", results:"
+		printf "\n%s\n" "Successfully built configuration \"$defconfig\", the resulting"
+		printf "%s" "build diff "
+
+		if [ -n "$base_commit_failed" ]; then
+			printf "%s\n\n" "is rather messy because the base commit failed to build:"
+		else
+			printf "%s\n\n", "is:"
+		fi
+
 		cat "$tmpdir/$defconfig.stderr.diff"
 	else
-		printf "\n%s\n" "Successfully built configuration \"$defconfig\", no issues"
+		printf "\n%s\n" "Successfully built configuration \"$defconfig\", no issues."
 	fi
 done;
 

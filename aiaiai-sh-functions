@@ -135,18 +135,19 @@ __print_build_log()
 	local config="$(leave_first "$1")";
 	local arch="$(leave_second "$1")"; shift
 	local commit_id="$1"; shift
+	local commit_info="$(git log -1 --oneline "$commit_id")"
+	local commit_nickname="${1:-""}"
 
 	cat <<EOF
-Failed to build the following commit for configuration "$config"${arch:+ "(architecture $arch)"}":
-
-$(git log -1 --oneline "$commit_id")
+Failed to build $commit_nickname: $commit_info
+Configuration: "$config"${arch:+", architecture $arch"}".
 
 $(cat)
 EOF
 }
 
 # Format a build failure report.
-# Usage: build_failure <defconfig> <commit_id> < <build_log>
+# Usage: build_failure <defconfig> <commit_id> <commit_nickname> < <build_log>
 build_failure()
 {
 	# The build log might have been generated with multiple jobs which
