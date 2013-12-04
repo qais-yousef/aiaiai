@@ -232,13 +232,14 @@ stdout_log="$tmpdir/$defconfig.stdout.log"
 stderr_log="$tmpdir/$defconfig.stderr.log"
 
 verbose "Building the base tree"
+base_commit_failed=
 aiaiai-make-kernel $verbose -j "$jobs" -o "$objdir" $arch_opt -D "$dconf" \
 	-O "$base_stdout_log" -E "$base_stderr_log" \
 	${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel" all
 if build_failed "$base_stderr_log"; then
 	# Failed to build the base commit, report, but don't exit in case the
 	# first patch fixes the issue.
-	build_failure "$defconfig" "$commit_id" < "$base_stderr_log"
+	base_commit_failed="yes"
 fi
 
 n=0
@@ -248,7 +249,17 @@ while [ "$n" -lt "$patch_cnt" ]; do
 	n="$(($n+1))"
 
 	if build_failed "$stderr_log"; then
-		build_failure "$defconfig" "HEAD" < "$stderr_log"
+		if [ "$n" = 1 ] && [ -n "$base_commit_failed" ]; then
+			# Base commit failed too, report about this
+			build_failure "$defconfig" "$commit_id" \
+			              "the base commit" < "$base_stderr_log"
+			printf "\n\n"
+		fi
+		build_failure "$defconfig" "HEAD" "patch #$n"< "$stderr_log"
 		exit 0
 	fi
 done
+
+if [ -n "$base_commit_failed" ]; then
+	printf "%s\n" "Base commit build failed, but the first patch fixed the build failure."
+fi
