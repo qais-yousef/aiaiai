@@ -480,7 +480,7 @@ for defconfig in $defconfigs; do
 		if [ -n "$base_commit_failed" ]; then
 			printf "%s\n\n" "is rather messy because the base commit failed to build:"
 		else
-			printf "%s\n\n", "is:"
+			printf "%s\n\n" "is:"
 		fi
 
 		cat "$tmpdir/$defconfig.stderr.diff"
