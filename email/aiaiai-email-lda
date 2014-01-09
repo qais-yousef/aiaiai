@@ -123,6 +123,9 @@ reject_and_reply()
 # the current date (taken from the global $date variable), <suffix> is the
 # a suffix supplied by the caller via "$2", and <counter> is usually 0, but if
 # there is already a file with such name, it gets increased to 1, and so on.
+#
+# NOTE! The 'process_all_series()' function relies on this directory name
+# format, so do not forget to amend the function if you change the format.
 generate_file_name()
 {
 	local where="$1"; shift
@@ -411,6 +414,44 @@ process_mbox()
 	fi
 }
 
+# This function goes through all the incomplete path series which we have
+# collected so far. And if the series happens to be complete, it queues them.
+# Normally, there should be no complete series in the "$series" directory.
+# However, sometimes this script misbehaves due to some bugs, and fails to add
+# a patch to the series, so it never gets queued. Then the Aiaiai admin may do
+# this manually. However, the series does not get queued anyway, because this
+# scrpt only checks the series when it adds a patch there.
+#
+# And this is where this function comes handy. It will go through the series
+# and queue all the complete ones.
+#
+# The only parameter of this function is the file to use as a temporary storage
+# for mboxes.
+process_all_series()
+{
+	local mbox="$1"; shift
+	local dir n
+
+	separator
+	message "Going through all partial series and checking if some of them became complete"
+
+	# Get all the current series
+	printf "%s\n" "$(find "$series" -mindepth 1 -maxdepth 1 -type d)" | \
+	    while IFS= read -r dir; do
+		[ -n "$dir" ] || continue
+		# Extract the series number
+		n=${dir%-*}
+		n=${n##*_}
+
+		# Clear everything from the current mbox
+		truncate -s0 -- "$mbox"
+
+		if series_is_complete "$dir" "$n"; then
+			queue_series "$mbox" "$dir" "$n"
+		fi
+	done
+}
+
 reap_old()
 {
 	local dir="$1"; shift
@@ -538,6 +579,8 @@ done
 
 printf "%s\n" "$prev" >> "$mbox"
 process_mbox "$mbox"
+
+process_all_series "$mbox"
 
 [ -z "$incomplete_min" ] || reap_old "$lda_tmp" "$incomplete_min"
 [ -z "$archive_min" ] || reap_old "$mail" "$archive_min"
