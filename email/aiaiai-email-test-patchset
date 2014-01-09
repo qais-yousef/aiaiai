@@ -201,18 +201,9 @@ verbose "Project \"$prj\""
 # Fetch project configuration
 parse_prj_config "$cfgfile" "$prj"
 
-# Merge the "To" and "Cc" addresses
-to="$(merge_addresses "$to" "$cc")"
-
-if [ "$cfg_reply_to_all" != "1" ]; then
-	to=
-else
-	# Strip own address
-	to=$(strip_address "$to" "$cfg_ownmail")
-fi
-
 # Reject the e-mail if the project has not been specified
 if [ -z "$prj" ]; then
+	to=
 	send_email <<EOF
 Sorry, but you have not specified the project name. Please, specify it
 using symbol "+" in the e-mail address of $ownname.
@@ -228,6 +219,7 @@ fi
 
 # Check if we have this project in our config file
 if [ -z "$cfg_name" ]; then
+	to=
 	send_email <<EOF
 Sorry, but project "$prj" is not supported. List of projects $cfg_ownname supports:
 
@@ -236,6 +228,16 @@ $(list_projects)
 If you have questions, please contact "$cfg_adminname" <$cfg_adminmail>.
 EOF
 	exit 0
+fi
+
+# Merge the "To" and "Cc" addresses
+to="$(merge_addresses "$to" "$cc")"
+
+if [ "$cfg_reply_to_all" != "1" ]; then
+	to=
+else
+	# Strip own address
+	to=$(strip_address "$to" "$cfg_ownmail")
 fi
 
 # Notify the sender that the patches have been accepted
