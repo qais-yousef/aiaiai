@@ -166,6 +166,9 @@ parse_config()
 # Usage: parse_prj_config <cfgfile> <prj>
 parse_prj_config()
 {
+	local cfgfile="$1"; shift
+	local prj="$1"; shift
+
 	cfg_name="$(ini_config_get "$cfgfile" "prj_$prj" "name")"
 	[ -n "$cfg_name" ] || return 0
 
