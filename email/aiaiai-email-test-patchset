@@ -333,6 +333,7 @@ aiaiai-test-patchset $verbose $preserve $bisectability $sparse $smatch $cppcheck
 	-i "$mbox" -j "$cfg_jobs" -c "$cfg_branch" -w "$tmpdir" \
 	${confdir:+-C "$confdir"} \
 	${cfg_unwanted_keywords:+-K "$cfg_unwanted_keywords"} -- \
+	${cfg_make_options:+-M "$cfg_make_options"} \
 	"$cfg_path" "$cfg_configs" > "$tmpdir/test-patchset.log" ||
 {
 	verbose "aiaiai-test-patchset failed"
