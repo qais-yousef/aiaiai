@@ -1,0 +1,35 @@
+This is the project TODO list. It contains the wish list of Aiaiai author and
+users. Feel free to send your requests to the Aiaiai mailing list. Remembere,
+these are just wishes, and we do not necessarily have any specific plans
+implementing them.
+
+
+* Improve user-friendliness.
+  * Separate all the e-mail front-end stuff to "doc/email".
+  * Improve the the e-mail front-end configuration file. Make all the variables
+    containing the text for end-users to refer instead. Just like
+    email.preamble refers the file, which contains the preamble. This is more
+    flexible and consistent.
+  * Move command-line options of 'aiaiai-email-*' scripts to the configuration
+    file. This should make it simpler for users to configure the whole thing
+    when all the knobs are in one place. Just make each script to parse the
+    config file and pick own configuration from there.
+  * Start assigning versions to the scripts and do official releases, with
+    signed tags, and tarballs.
+  * Provide packages for various distributions. Including packages for the
+    'smack' validation tool, because distros do not provide it.
+  * Describe the coding style and various shell tricks in a separate file, in
+    order to make it easier for people to start hacking Aiaiai.
+  * Describe how the e-mail front-end distinguish patches and collects
+    patch-sets.
+  * Teach the scripts to compile 'remap-log' if it is not compiled,
+    instead of just failing. This is probably more user-friendly.
+  * Describe some review policy, e.g., how many days I promise to wait
+    for review/reply before applying patches.
+
+* Functional improvements
+  * Stop carrying own copies of checkpatch.pl and coccinelle. Just use the ones
+    from the project kernel tree. For those who uses old kernels but want to
+    benefit from new checkpatch.pl/coccinelle scripts, allow to specify path
+    to the upstream kernel, and pick the scripts from there instead of picking
+    them from the project kernel sources.
