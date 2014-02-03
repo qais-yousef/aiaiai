@@ -20,7 +20,7 @@ show_usage()
 	cat <<-EOF
 Usage: $PROG [options] -- ...
 
-This is an internal aiaiai helper program which runs various source soce
+This is an internal aiaiai helper program which runs various source code
 analysis tools when building the kernel. Options for $PROG has to go first,
 then there has to be a "--" delimiter, and then any number of options which are
 not interpreted by this script but passed further to the code analysis tool
