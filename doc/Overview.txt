@@ -1,0 +1,66 @@
+Aiaiai is a tool for validating Linux kernel patches using various available
+open-source tools. Aiaiai is useful for both subsystem maintainers and
+kernel developers.
+
+Aiaiai usage scenarios include:
+
+1. a developer has a patch-set which he/she wants to validate before submitting
+   to the maintainer or the subsystem mailing list
+2. a subsystem maintainer validates incoming patches before merging them to the
+   subsystem kernel tree
+
+Aiaiai roughly works as follows.
+
+1. Build the kernel before applying the patch-set and after applying the
+   patch-set.
+2. Run the following static analysis tools while building: sparse, smatch,
+   coccinelle, cppcheck.
+3. Compare the resulting build logs in a smart way (taking into account line
+   number changes, etc)
+3. Report about new gcc warnings and coccinelle/sparse/smatch/cppcheck
+   complaints. If checkpatch.pl has any complaints, they are also reported by
+   Aiaiai.
+
+Here is an example of Aiaiai report.
+
+--------------------------------------------------------------------------------
+
+1  Successfully built configuration "my_defconfig,i386", results:
+2
+3  --- before_patching.log
+4  +++ after_patching.log
+5  @@ @@
+6  -drivers/staging/cruft/my_drv.c: In function ‘my_pool_destroy’:
+7  -drivers/staging/cruft/my_drv.c:165:22: warning: variable ‘test1’ set but not used [-Wunused-but-set-variable]
+8  @@ @@
+9  +drivers/staging/cruft/my_drv.c: In function ‘my_event_handler’:
+10 +drivers/staging/cruft/my_drv.c:311:36: warning: unused variable ‘reg’ [-Wunused-variable]
+11 +drivers/staging/cruft/my_drv.c:1001:1-7: preceding lock on line 837 [coccinelle]
+12 +drivers/staging/cruft/my_drv.c:834 my_int_data(12) warn: variable dereferenced before check 'priv' (see line 827) [smatch]
+
+--------------------------------------------------------------------------------
+
+o Line 1 says that configuration "my_defconfig" for architecture i386 has been
+  built (so the patch-set compiles).
+o Starting from line 3 we have a diff of 2 build logs - before and after
+  patching.
+o Lines 6 and 7 tell that the patch-set eliminated a warning, which is very
+  welcome.
+o Lines 9 and 10 tell that the patch-set introduced a gcc warning, which is
+  less welcome.
+o Line 11 a complaint form coccinelle about locking. Worth looking closer.
+  The coccinelle scripts that are part of the Linux kernel do not usually
+  produce many false positives.
+o Line 12 tells that smatch has a complaint.
+
+Additionally, Aiaiai runs the bisectability test when there is more than one
+patch. It applies patches one-by-one, compiles at each step, and reports if
+compilation breaks.
+
+Aiaiai also runs checkpatch.pl for the whole patch-set (squashed) and
+every individual patch.
+
+Following are the currently implemented ways of using Aiaiai.
+1. Just run 'aiaiai-test-patchset' from console
+2. Attach Aiaiai to a mailing list using the e-mail front-end
+3. Attach Aiaiai to gerrit using a the Jenkins gerrit notifications plugin.
