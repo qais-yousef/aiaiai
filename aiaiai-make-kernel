@@ -225,8 +225,7 @@ done
 
 program_required "aiaiai-locker" \
 		 "You probably did not compile it, run 'make' in the topmost aiaiai source code directory"
-program_required "${cross}gcc" \
-		 "You can download various cross-compilers from http://kernel.org/pub/tools/crosstool"
+program_required "${cross}gcc" ""
 program_required "make" ""
 
 kernel_tree="$(opt_check_dir "kernel-tree" "$1")"; shift

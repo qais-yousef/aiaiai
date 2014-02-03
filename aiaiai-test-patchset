@@ -347,8 +347,7 @@ program_required "diff" ""
 
 for defconfig in $defconfigs; do
 	cross="$(leave_third "$defconfig")";
-	program_required "${cross}gcc" \
-			 "You can download various cross-compilers from http://kernel.org/pub/tools/crosstool"
+	program_required "${cross}gcc" ""
 done
 
 [ -n "$tmpdir" ] || tmpdir="$(mktemp -dt "$PROG.XXXX")"
