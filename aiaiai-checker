@@ -31,7 +31,6 @@ Options:
       --smatch           check with smatch;
       --cppcheck         check with cppcheck;
       --coccinelle       check with coccinelle (spatch);
-      --check-only=FILE  check only files listed in FILE;
   -h, --help             show this text and exit.
 EOF
 }
@@ -90,7 +89,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o h --long sparse,smatch,cppcheck,coccinelle,check-only:,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o h --long sparse,smatch,cppcheck,coccinelle,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -100,7 +99,6 @@ run_sparse=
 run_smatch=
 run_cppcheck=
 run_coccinelle=
-check_only=
 
 while true; do
 	case "$1" in
@@ -119,10 +117,6 @@ while true; do
 	--coccinelle)
 		run_coccinelle=1
 		program_required "spatch" "Usually Linux distribution provide a 'spatch' or 'coccinelle' package"
-		;;
-	--check-only)
-		check_only="$(opt_check_read "$1" "$2")"
-		shift
 		;;
 	-h|--help)
 		show_usage
@@ -146,17 +140,6 @@ file_to_check="$(get_file_to_check "$@")"
 if [ -z "$run_sparse" ] && [ -z "$run_smatch" ] && [ -z "$run_cppcheck" ] &&
    [ -z "$run_coccinelle" ]; then
 	exit 0
-fi
-
-if [ -n "$check_only" ]; then
-	match=
-	files="$(cat "$check_only")"
-	for file in $files; do
-		match="$(printf "%s" "$@" | sed -n "/$(quote_sed_regexp "$file")/p")"
-		[ -z "$match" ] || break
-	done
-
-	[ -n "$match" ] || exit 0
 fi
 
 # Run all the tools in background
