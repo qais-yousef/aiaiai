@@ -86,8 +86,16 @@ list_projects()
 	done
 }
 
-# Send an e-mail reply to the patch author.
-# Usage: send_email
+# Send an e-mail reply to the patch author. This function relies on the various
+# global variables, most notably:
+#   o "from" - address of the submitter of the patch under test, our reply will
+#              be sent there
+#   o "to" - addresses of the recipients of the patch under test, these will be
+#            carbon-copied
+#   o "subj" - subject of patch under test, the reply will have the same
+#              subject
+#   o "id" - message ID of the patch under test, the reply will have reference
+#            this ID
 send_email()
 {
 	compose_email "$from" "$to" "$subj" "$id" > "$tmpdir/mail"
@@ -99,6 +107,92 @@ send_email()
 	else
 		verbose "Do not actually send the email - we are in test mode"
 	fi
+}
+
+# This function is called when the target project for the patch under test was
+# not specified. It sends a sensible reply back to the submitter, without
+# carbon-copying anyone else.
+error_no_project_specified()
+{
+	to=
+	send_email <<EOF
+Sorry, but you have not specified the project name. Please, specify it
+using the "+" symbol in the e-mail address of $cfg_ownname. For example,
+"$cfg_ownmail_local+XYZ@$cfg_ownmail_domain" would mean project "XYZ".
+
+List of projects $cfg_ownname supports:
+
+$(list_projects)
+
+Please, contact "$cfg_adminname" <$cfg_adminmail>
+if you have any questions.
+EOF
+	exit 0
+}
+
+# This function is called when submitters specify a non-existing project. It
+# sends a sensible reply back to the submitter, without carbon-copying anyone
+# else.
+error_project_not_found()
+{
+	to=
+	send_email <<EOF
+Sorry, but project "$prj" is not supported. List of projects $cfg_ownname
+currently supports:
+
+$(list_projects)
+
+Please, contact "$cfg_adminname" <$cfg_adminmail>
+if you have any questions.
+EOF
+	exit 0
+}
+
+# This function is called when the 'aiaiai-test-patchest' fails. This most
+# probably means a bug or configuration issues. This function sends an e-mail
+# notification about this. The notification is sent to the patch submitter and,
+# depending on the "reply_to_all" configuration option, everyone in "To:" and
+# "Cc:".
+error_test_patchset_failed()
+{
+	send_email <<EOF
+Sorry, but an internal $cfg_ownname error happened. Please, contact
+"$cfg_adminname" <$cfg_adminmail>.
+EOF
+	exit 0
+}
+
+# This is a helper function which sends a notification about the patch under
+# test being accepted for testing. The notification e-mail is sent to the patch
+# submitter and, depending on the "reply_to_all" configuration option, everyone
+# in "To:" and "Cc:".
+send_accepted_email()
+{
+	send_email <<EOF
+Your patch or patch-set:
+
+$(fetch_header_per_patch "Subject" < "$mbox" | sort)
+
+has been accepted by $cfg_ownname and scheduled for testing.
+EOF
+}
+
+# This is a helper function which sends the results of testing back to the
+# patch submitter and, depending on the "reply_to_all" configuration option,
+# everyone in "To:" and "Cc:".
+send_results_email()
+{
+	send_email <<EOF
+$cfg_built_preamble
+
+$(fetch_header_per_patch "Subject" < "$mbox" | sort)
+
+Project: $cfg_name ($cfg_descr)
+
+Configurations: $cfg_configs
+
+$(cat -- $tmpdir/test-patchset.log)
+EOF
 }
 
 TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long test-mode,input:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,verbose,help -- "$@"` ||
@@ -206,18 +300,7 @@ verbose "Project \"$prj\""
 
 # Reject the e-mail if the project has not been specified
 if [ -z "$prj" ]; then
-	to=
-	send_email <<EOF
-Sorry, but you have not specified the project name. Please, specify it
-using symbol "+" in the e-mail address of $ownname.
-
-List of projects $cfg_ownname supports:
-
-$(list_projects)
-
-If you have questions, please contact "$cfg_adminname" <$cfg_adminmail>.
-EOF
-	exit 0
+	error_no_project_specified
 fi
 
 # Fetch project configuration
@@ -225,15 +308,7 @@ parse_prj_config "$cfgfile" "$prj"
 
 # Check if we have this project in our config file
 if [ -z "$cfg_name" ]; then
-	to=
-	send_email <<EOF
-Sorry, but project "$prj" is not supported. List of projects $cfg_ownname supports:
-
-$(list_projects)
-
-If you have questions, please contact "$cfg_adminname" <$cfg_adminmail>.
-EOF
-	exit 0
+	error_project_not_found
 fi
 
 # Merge the "To" and "Cc" addresses
@@ -249,13 +324,7 @@ fi
 # Notify the sender that the patches have been accepted
 if [ "$cfg_accept_notify" = "1" ]; then
 	message "Sending \"accepted\" e-mail"
-	send_email <<EOF
-Your patch or patch-set:
-
-$(fetch_header_per_patch "Subject" < "$mbox" | sort)
-
-has been scheduled for testing.
-EOF
+	send_accepted_email
 fi
 
 # Test the path (or patch-set)
@@ -267,23 +336,9 @@ aiaiai-test-patchset $verbose $preserve $bisectability $sparse $smatch $cppcheck
 	"$cfg_path" "$cfg_configs" > "$tmpdir/test-patchset.log" ||
 {
 	message "aiaiai-test-patchset failed"
-	send_email <<EOF
-Sorry, but an internal error happened. Please, send a bug report to
-"$cfg_adminname" <$cfg_adminmail>.
-EOF
-	exit 0
+	error_test_patchset_failed
 }
 
+# Mail the results of testing
 message "Test is finished, sending back the results"
-
-send_email <<EOF
-$cfg_built_preamble
-
-$(fetch_header_per_patch "Subject" < "$mbox" | sort)
-
-Project: $cfg_name ($cfg_descr)
-
-Configurations: $cfg_configs
-
-$(cat -- $tmpdir/test-patchset.log)
-EOF
+send_results_email
