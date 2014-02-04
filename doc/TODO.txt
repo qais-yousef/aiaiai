@@ -36,8 +36,6 @@ implementing them.
     for review/reply before applying patches.
 
 * Functional improvements
-  * Stop carrying own copies of checkpatch.pl and coccinelle. Just use the ones
-    from the project kernel tree. For those who uses old kernels but want to
-    benefit from new checkpatch.pl/coccinelle scripts, allow to specify path
-    to the upstream kernel, and pick the scripts from there instead of picking
-    them from the project kernel sources.
+  * Stop carrying own copy of coccinelle. Just use the ones from the
+    project kernel tree. This is better because our own copy tend to get
+    out-of-date.
