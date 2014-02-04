@@ -13,7 +13,15 @@ implementing them.
   * Move command-line options of 'aiaiai-email-*' scripts to the configuration
     file. This should make it simpler for users to configure the whole thing
     when all the knobs are in one place. Just make each script to parse the
-    config file and pick own configuration from there.
+    config file and pick own configuration from there. Namely, most of
+    the 'aiaiai-email-dispatcher', 'aiaiai-email-testpatchset', and
+    'aiaiai-email-lda' options have to go away.
+  * Additional item for the previous one: aiaiai-email-dispatcher is too
+    difficutl to execute because it requires the "<validator>" argument.
+    But there is only one validator which makes sense in Aiaiai context
+    - "aiaiai-email-test-patchset". So remove the silly argument and
+    just run the validator, without exposing unnecessary complexity to
+    the user.
   * Start assigning versions to the scripts and do official releases, with
     signed tags, and tarballs.
   * Provide packages for various distributions. Including packages for the
