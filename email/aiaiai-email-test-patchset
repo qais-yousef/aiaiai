@@ -198,9 +198,6 @@ prj="$(fetch_project_name "$to" "$cfg_ownmail")"
 
 verbose "Project \"$prj\""
 
-# Fetch project configuration
-parse_prj_config "$cfgfile" "$prj"
-
 # Reject the e-mail if the project has not been specified
 if [ -z "$prj" ]; then
 	to=
@@ -216,6 +213,9 @@ If you have questions, please contact "$cfg_adminname" <$cfg_adminmail>.
 EOF
 	exit 0
 fi
+
+# Fetch project configuration
+parse_prj_config "$cfgfile" "$prj"
 
 # Check if we have this project in our config file
 if [ -z "$cfg_name" ]; then
