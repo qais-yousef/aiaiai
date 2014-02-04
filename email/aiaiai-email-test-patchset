@@ -70,7 +70,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-# List projects currently supported
+# List currently supported projects.
 list_projects()
 {
 	local prj
