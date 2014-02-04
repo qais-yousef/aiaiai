@@ -75,8 +75,14 @@ list_projects()
 {
 	local prj
 
-	LC_ALL=C sed -n -e "s/^\[prj_\(.*\)\]$/\1/p" "$cfgfile" | while read -r prj; do
-		printf "* %s\n" "$cfg_ownmail_local+$prj@$cfg_ownmail_domain: $cfg_descr"
+	LC_ALL=C sed -n -e "s/^\[prj_\(.*\)\]$/\1/p" "$cfgfile" | \
+	    while read -r prj; do
+		# Get project description
+		local descr
+		ini_config_get_or_die descr "$cfgfile" "prj_$prj" "description"
+
+		local email="$cfg_ownmail_local+$prj@$cfg_ownmail_domain"
+		printf "* %s\n" "$prj ($email): $descr"
 	done
 }
 
