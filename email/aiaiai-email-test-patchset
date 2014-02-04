@@ -62,7 +62,7 @@ cleanup_handler()
 	rm $verbose -rf -- "$mbox" >&2
 
 	if [ -n "$preserve" ]; then
-		message "Preserved tmpdir: $tmpdir"
+		verbose "Preserved tmpdir: $tmpdir"
 	else
 		[ -z "$tmpdir" ] || verbose "Removing $tmpdir";
 		rm -rf -- "$tmpdir" >&2
@@ -274,8 +274,8 @@ fetch_header_or_die id "Message-Id" < "$mbox"
 msgname="$from: $subj (Message-Id: $id)"
 
 echo >&2
-message "Testing mbox: \"$msgname\""
-message "parsing config file \"$cfgfile\""
+verbose "Testing mbox: \"$msgname\""
+verbose "parsing config file \"$cfgfile\""
 
 parse_config "$cfgfile"
 
@@ -323,22 +323,22 @@ fi
 
 # Notify the sender that the patches have been accepted
 if [ "$cfg_accept_notify" = "1" ]; then
-	message "Sending \"accepted\" e-mail"
+	verbose "Sending \"accepted\" e-mail"
 	send_accepted_email
 fi
 
 # Test the path (or patch-set)
-message "Test configs \"$cfg_configs\" branch \"$cfg_branch\" of \"$cfg_path\""
+verbose "Test configs \"$cfg_configs\" branch \"$cfg_branch\" of \"$cfg_path\""
 aiaiai-test-patchset $verbose $preserve $bisectability $sparse $smatch $cppcheck $coccinelle \
 	-i "$mbox" -j "$cfg_jobs" -c "$cfg_branch" -w "$tmpdir" \
 	${confdir:+-C "$confdir"} \
 	${cfg_unwanted_keywords:+-K "$cfg_unwanted_keywords"} -- \
 	"$cfg_path" "$cfg_configs" > "$tmpdir/test-patchset.log" ||
 {
-	message "aiaiai-test-patchset failed"
+	verbose "aiaiai-test-patchset failed"
 	error_test_patchset_failed
 }
 
 # Mail the results of testing
-message "Test is finished, sending back the results"
+verbose "Test is finished, sending back the results"
 send_results_email
