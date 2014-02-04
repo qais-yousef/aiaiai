@@ -40,7 +40,7 @@ Options:
       --sparse           check with sparse while building;
       --smatch           check with smatch while building;
       --cppcheck         check with cppcheck;
-      --coccinelle       check with coccinlle;
+      --coccinelle       check with coccinelle;
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
 EOF
