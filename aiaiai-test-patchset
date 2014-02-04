@@ -375,7 +375,6 @@ else
 fi
 
 cloned_kernel2="$tmpdir2/src"
-# Use a shared clone, since it is local and we won't screw up the tree
 git clone --shared "${verbose:--q}" "$kernel_tree" "$cloned_kernel2" >&2
 cd "$cloned_kernel2"
 
@@ -427,7 +426,6 @@ git diff --numstat $commit_id1..$commit_id2 |
 
 # Clone another copy of the kernel tree
 cloned_kernel1="$tmpdir1/src"
-# Use a shared clone since it is local and we won't screw up the tree
 git clone --shared "${verbose:--q}" "$cloned_kernel2" "$cloned_kernel1" >&2
 cd "$cloned_kernel1"
 
