@@ -112,9 +112,9 @@ merge_addresses()
 		                           -e "s/,$//" -e "s/[[:blank:]]\+//g"
 }
 
-# A helper function for "init_config_get" which fails when unable to get the
-# ini file option.
-__ini_config_get_or_die()
+# A helper function for 'ini_config_get()' (from libshell) which fails when
+# unable to get the ini file option.
+ini_config_get_or_die()
 {
 	local var="$1"; shift
 	local result="$(ini_config_get "$1" "$2" "$3")"
@@ -139,16 +139,16 @@ parse_config()
 {
 	local cfgfile="$1"
 
-	__ini_config_get_or_die cfg_ownname   "$cfgfile" "global" "ownname"
-	__ini_config_get_or_die cfg_ownmail   "$cfgfile" "global" "ownmail"
-	__ini_config_get_or_die cfg_adminmail "$cfgfile" "global" "adminmail"
-	__ini_config_get_or_die cfg_adminname "$cfgfile" "global" "adminname"
-	__ini_config_get_or_die cfg_workdir   "$cfgfile" "global" "workdir"
-	__ini_config_get_or_die cfg_jobs      "$cfgfile" "global" "jobs"
+	ini_config_get_or_die cfg_ownname   "$cfgfile" "global" "ownname"
+	ini_config_get_or_die cfg_ownmail   "$cfgfile" "global" "ownmail"
+	ini_config_get_or_die cfg_adminmail "$cfgfile" "global" "adminmail"
+	ini_config_get_or_die cfg_adminname "$cfgfile" "global" "adminname"
+	ini_config_get_or_die cfg_workdir   "$cfgfile" "global" "workdir"
+	ini_config_get_or_die cfg_jobs      "$cfgfile" "global" "jobs"
 
-	__ini_config_get_or_die cfg_signature      "$cfgfile" "email" "signature"
-	__ini_config_get_or_die cfg_preamble       "$cfgfile" "email" "preamble"
-	__ini_config_get_or_die cfg_built_preamble "$cfgfile" "email" "built_preamble"
+	ini_config_get_or_die cfg_signature      "$cfgfile" "email" "signature"
+	ini_config_get_or_die cfg_preamble       "$cfgfile" "email" "preamble"
+	ini_config_get_or_die cfg_built_preamble "$cfgfile" "email" "built_preamble"
 
 	cfg_preamble="$(cat "$cfg_preamble")"
 
@@ -172,12 +172,12 @@ parse_prj_config()
 	cfg_name="$(ini_config_get "$cfgfile" "prj_$prj" "name")"
 	[ -n "$cfg_name" ] || return 0
 
-	__ini_config_get_or_die cfg_descr         "$cfgfile" "prj_$prj" "description"
-	__ini_config_get_or_die cfg_path          "$cfgfile" "prj_$prj" "path"
-	__ini_config_get_or_die cfg_configs       "$cfgfile" "prj_$prj" "configs"
-	__ini_config_get_or_die cfg_branch        "$cfgfile" "prj_$prj" "branch"
-	__ini_config_get_or_die cfg_reply_to_all  "$cfgfile" "prj_$prj" "reply_to_all"
-	__ini_config_get_or_die cfg_accept_notify "$cfgfile" "prj_$prj" "accept_notify"
+	ini_config_get_or_die cfg_descr         "$cfgfile" "prj_$prj" "description"
+	ini_config_get_or_die cfg_path          "$cfgfile" "prj_$prj" "path"
+	ini_config_get_or_die cfg_configs       "$cfgfile" "prj_$prj" "configs"
+	ini_config_get_or_die cfg_branch        "$cfgfile" "prj_$prj" "branch"
+	ini_config_get_or_die cfg_reply_to_all  "$cfgfile" "prj_$prj" "reply_to_all"
+	ini_config_get_or_die cfg_accept_notify "$cfgfile" "prj_$prj" "accept_notify"
 
 	cfg_always_cc="$(ini_config_get "$cfgfile" "prj_$prj" "always_cc")"
 	cfg_unwanted_keywords="$(ini_config_get "$cfgfile" ""prj_$prj"" "unwanted_keywords")"
