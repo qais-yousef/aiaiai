@@ -28,6 +28,18 @@ print_separator()
 	echo
 }
 
+# Check if dash is available and we are not running in dash
+can_switch_to_dash()
+{
+	if command -v "dash" >/dev/null 2>&1; then
+		if [ -n "${BASH_VERSION:-}" ]; then
+			return 0
+		fi
+	fi
+
+	return 1
+}
+
 # Die if a program is not in PATH
 # Usage: program_required <program_name>
 program_required()

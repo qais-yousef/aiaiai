@@ -16,6 +16,13 @@ PATH="$srcdir:$srcdir/email:$srcdir/external/libshell:$PATH"
 PROG="${0##*/}"
 export message_time="yes"
 
+# This is a small trick to make sure the script is portable - check if 'dash'
+# is present, and if yes - use it.
+if can_switch_to_dash; then
+	exec dash -euf -- "$srcdir/$PROG" "$@"
+	exit $?
+fi
+
 show_usage()
 {
 	cat <<-EOF

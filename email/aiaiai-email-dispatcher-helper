@@ -9,9 +9,17 @@ PATH="$srcdir:$srcdir/email:$srcdir/external/libshell:$PATH"
 
 . shell-error
 . shell-signal
+. aiaiai-sh-functions
 
 PROG="${0##*/}"
 message_time="yes"
+
+# This is a small trick to make sure the script is portable - check if 'dash'
+# is present, and if yes - use it.
+if can_switch_to_dash; then
+	exec dash -euf -- "$srcdir/$PROG" "$@"
+	exit $?
+fi
 
 show_usage()
 {
