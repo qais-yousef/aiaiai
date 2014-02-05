@@ -162,11 +162,11 @@ parse_config()
 # Similar to "parse_config", but parses a project configuration section. If the
 # project is found, the following variables are defined:
 #
-# cfg_name. cfg_description, cfg_path, cfg_configs, cfg_branch,
-# cfg_reply_to_all, # cfg_accept_notify, cfg_always_cc, cfg_unwanted_keywords,
-# and cfg_kmake_opts.
+# cfg_name. pcfg_description, pcfg_path, pcfg_configs, pcfg_branch,
+# pcfg_reply_to_all, pcfg_accept_notify, pcfg_always_cc,
+# pcfg_unwanted_keywords, and pcfg_kmake_opts.
 #
-# If the project is not found, this function only defined an empty "cfg_name"
+# If the project is not found, this function only defined an empty "pcfg_name"
 # variable.
 #
 # Usage: parse_prj_config <cfgfile> <prj>
@@ -175,19 +175,19 @@ parse_prj_config()
 	local cfgfile="$1"; shift
 	local prj="$1"; shift
 
-	cfg_name="$(ini_config_get "$cfgfile" "prj_$prj" "name")"
-	[ -n "$cfg_name" ] || return 0
+	pcfg_name="$(ini_config_get "$cfgfile" "prj_$prj" "name")"
+	[ -n "$pcfg_name" ] || return 0
 
-	ini_config_get_or_die cfg_description   "$cfgfile" "prj_$prj" "description"
-	ini_config_get_or_die cfg_path          "$cfgfile" "prj_$prj" "path"
-	ini_config_get_or_die cfg_configs       "$cfgfile" "prj_$prj" "configs"
-	ini_config_get_or_die cfg_branch        "$cfgfile" "prj_$prj" "branch"
-	ini_config_get_or_die cfg_reply_to_all  "$cfgfile" "prj_$prj" "reply_to_all"
-	ini_config_get_or_die cfg_accept_notify "$cfgfile" "prj_$prj" "accept_notify"
+	ini_config_get_or_die pcfg_description   "$cfgfile" "prj_$prj" "description"
+	ini_config_get_or_die pcfg_path          "$cfgfile" "prj_$prj" "path"
+	ini_config_get_or_die pcfg_configs       "$cfgfile" "prj_$prj" "configs"
+	ini_config_get_or_die pcfg_branch        "$cfgfile" "prj_$prj" "branch"
+	ini_config_get_or_die pcfg_reply_to_all  "$cfgfile" "prj_$prj" "reply_to_all"
+	ini_config_get_or_die pcfg_accept_notify "$cfgfile" "prj_$prj" "accept_notify"
 
-	cfg_always_cc="$(ini_config_get "$cfgfile" "prj_$prj" "always_cc")"
-	cfg_unwanted_keywords="$(ini_config_get "$cfgfile" ""prj_$prj"" "unwanted_keywords")"
-	cfg_kmake_opts="$(ini_config_get "$cfgfile" "prj_$prj" "kmake_opts")"
+	pcfg_always_cc="$(ini_config_get "$cfgfile" "prj_$prj" "always_cc")"
+	pcfg_unwanted_keywords="$(ini_config_get "$cfgfile" ""prj_$prj"" "unwanted_keywords")"
+	pcfg_kmake_opts="$(ini_config_get "$cfgfile" "prj_$prj" "kmake_opts")"
 }
 
 # Compose (but not send) e-mail reply. This function assumes that the following

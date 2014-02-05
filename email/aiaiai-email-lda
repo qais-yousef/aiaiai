@@ -103,7 +103,7 @@ reject_and_reply()
 	verbose "Project \"$prj\""
 	parse_prj_config "$cfgfile" "$prj"
 
-	if [ -n "$cfg_name" ] && [ "$cfg_reply_to_all" == "1" ]; then
+	if [ -n "$pcfg_name" ] && [ "$pcfg_reply_to_all" == "1" ]; then
 		# Strip own address
 		to=$(strip_address "$to" "$cfg_ownmail")
 	else

@@ -194,9 +194,9 @@ $cfg_built_preamble
 
 $(fetch_header_per_patch "Subject" < "$mbox" | sort)
 
-Project: $cfg_name ($cfg_description)
+Project: $pcfg_name ($pcfg_description)
 
-Configurations: $cfg_configs
+Configurations: $pcfg_configs
 
 $(cat -- $tmpdir/test-patchset.log)
 EOF
@@ -314,14 +314,14 @@ fi
 parse_prj_config "$cfgfile" "$prj"
 
 # Check if we have this project in our config file
-if [ -z "$cfg_name" ]; then
+if [ -z "$pcfg_name" ]; then
 	error_project_not_found
 fi
 
 # Merge the "To" and "Cc" addresses
 to="$(merge_addresses "$to" "$cc")"
 
-if [ "$cfg_reply_to_all" != "1" ]; then
+if [ "$pcfg_reply_to_all" != "1" ]; then
 	to=
 else
 	# Strip own address
@@ -329,19 +329,20 @@ else
 fi
 
 # Notify the sender that the patches have been accepted
-if [ "$cfg_accept_notify" = "1" ]; then
+if [ "$pcfg_accept_notify" = "1" ]; then
 	verbose "Sending \"accepted\" e-mail"
 	send_accepted_email
 fi
 
 # Test the path (or patch-set)
-verbose "Test configs \"$cfg_configs\" branch \"$cfg_branch\" of \"$cfg_path\""
-aiaiai-test-patchset $verbose $preserve $bisectability $sparse $smatch $cppcheck $coccinelle \
-	-i "$mbox" -j "$cfg_jobs" -c "$cfg_branch" -w "$tmpdir" \
+verbose "Test configs \"$pcfg_configs\" branch \"$pcfg_branch\" of \"$pcfg_path\""
+aiaiai-test-patchset $verbose $preserve \
+	$bisectability $sparse $smatch $cppcheck $coccinelle \
+	-i "$mbox" -j "$cfg_jobs" -c "$pcfg_branch" -w "$tmpdir" \
 	${confdir:+-C "$confdir"} \
-	${cfg_unwanted_keywords:+-K "$cfg_unwanted_keywords"} -- \
-	${cfg_kmake_opts:+-M "$cfg_kmake_opts"} \
-	"$cfg_path" "$cfg_configs" > "$tmpdir/test-patchset.log" ||
+	${pcfg_unwanted_keywords:+-K "$pcfg_unwanted_keywords"} -- \
+	${pcfg_kmake_opts:+-M "$pcfg_kmake_opts"} \
+	"$pcfg_path" "$pcfg_configs" > "$tmpdir/test-patchset.log" ||
 {
 	verbose "aiaiai-test-patchset failed"
 	error_test_patchset_failed
