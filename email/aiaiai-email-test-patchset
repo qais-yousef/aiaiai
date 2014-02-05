@@ -312,9 +312,10 @@ fi
 if [ "$pcfg_reply_to_all" != "1" ]; then
 	# Replies all the patch recepients will be CCed
 	reply_cc="$(merge_addresses "$to" "$cc")"
+	reply_cc="$(merge_addresses "$reply_cc" "$pcfg_always_cc")"
 	reply_cc=$(strip_address "$reply_cc" "$cfg_ownmail")
 else
-	reply_cc=
+	reply_cc="$pcfg_always_cc"
 fi
 
 # Notify the sender that the patches have been accepted
