@@ -278,6 +278,13 @@ fi
 fetch_header_or_die subj "Subject" < "$mbox"
 fetch_header_or_die from "From" < "$mbox"
 fetch_header_or_die id "Message-Id" < "$mbox"
+to="$(fetch_header "To" < "$mbox")"
+cc="$(fetch_header "Cc" < "$mbox")"
+
+# Either "To:" or "Cc:" must exist
+if [ -z "$to" ] && [ -z "$cc" ]; then
+       die "Neither \"To:\" nor \"Cc:\" header found"
+fi
 
 printf "\n"
 verbose "Testing mbox: \"$from: $subj (Message-Id: $id)\""
@@ -290,14 +297,6 @@ mkdir $verbose -p -- "$cfg_workdir" >&2
 tmpdir="$(mktemp --tmpdir="$cfg_workdir" -dt "$PROG.XXXX")"
 mv $verbose -- "$mbox" "$tmpdir/mbox" >&2
 mbox="$tmpdir/mbox"
-
-to="$(fetch_header "To" < "$mbox")"
-cc="$(fetch_header "Cc" < "$mbox")"
-
-# Either "To:" or "Cc:" must exist
-if [ -z "$to" ] && [ -z "$cc" ]; then
-       die "Neither \"To:\" nor \"Cc:\" header found"
-fi
 
 # Find out the project name
 prj="$(fetch_project_name "$to" "$cfg_ownmail")"
