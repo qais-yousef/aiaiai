@@ -50,3 +50,7 @@ implementing them.
   * Stop carrying own copy of coccinelle. Just use the ones from the
     project kernel tree. This is better because our own copy tend to get
     out-of-date.
+  * We hard-code 'KCFLAGS='-Wno-missing-field-initializers
+    -Wno-sign-compare' and W=1 in 'aiaiai-make-kernel'. This is not that
+    nice. It is better to make these things to be the default value of
+    the -M parameter. The users could disable them or re-define easily.
