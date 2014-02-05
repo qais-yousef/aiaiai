@@ -128,9 +128,8 @@ EOF
 	exit 0
 }
 
-# This function is called when submitters specify a non-existing project. It
-# sends a sensible reply back to the submitter, without carbon-copying anyone
-# else.
+# This function is called when the patch submitter specifies a non-existing
+# project. It sends a sensible reply back, without carbon-copying anyone else.
 error_project_not_found()
 {
 	send_email <<EOF
@@ -310,7 +309,7 @@ fi
 
 # Create the Cc list for replies that we'll be sending
 if [ "$pcfg_reply_to_all" != "1" ]; then
-	# Replies all the patch recepients will be CCed
+	# Replies all the patch recipients will be CCed
 	reply_cc="$(merge_addresses "$to" "$cc")"
 	reply_cc="$(merge_addresses "$reply_cc" "$pcfg_always_cc")"
 	reply_cc=$(strip_address "$reply_cc" "$cfg_ownmail")
