@@ -162,7 +162,7 @@ parse_config()
 #
 # cfg_name. cfg_descr, cfg_path, cfg_configs, cfg_branch, cfg_reply_to_all,
 # cfg_accept_notify, cfg_always_cc, cfg_unwanted_keywords, and
-# cfg_make_options.
+# cfg_kmake_opts.
 #
 # If the project is not found, this function only defined an empty "cfg_name"
 # variable.
@@ -185,7 +185,7 @@ parse_prj_config()
 
 	cfg_always_cc="$(ini_config_get "$cfgfile" "prj_$prj" "always_cc")"
 	cfg_unwanted_keywords="$(ini_config_get "$cfgfile" ""prj_$prj"" "unwanted_keywords")"
-	cfg_make_options="$(ini_config_get "$cfgfile" "prj_$prj" "make_options")"
+	cfg_kmake_opts="$(ini_config_get "$cfgfile" "prj_$prj" "kmake_opts")"
 }
 
 # Compose (but not send) e-mail reply. This function assumes that the following
