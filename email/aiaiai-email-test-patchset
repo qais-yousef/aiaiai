@@ -194,7 +194,7 @@ $cfg_built_preamble
 
 $(fetch_header_per_patch "Subject" < "$mbox" | sort)
 
-Project: $cfg_name ($cfg_descr)
+Project: $cfg_name ($cfg_description)
 
 Configurations: $cfg_configs
 
