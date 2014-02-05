@@ -16,6 +16,11 @@ implementing them.
     config file and pick own configuration from there. Namely, most of
     the 'aiaiai-email-dispatcher', 'aiaiai-email-testpatchset', and
     'aiaiai-email-lda' options have to go away.
+  * Eventually make non-email scripts (aiaiai-test-patchset) also
+    support the config file. This could be an alternative to specifying
+    everythig via options. E.g., would could run
+    'aiaia-test-patchset --config <path>/aiaiai.cfg' and have all the
+    details defined in 'aiaiai.cfg'.
   * Additional item for the previous one: aiaiai-email-dispatcher is too
     difficutl to execute because it requires the "<validator>" argument.
     But there is only one validator which makes sense in Aiaiai context
