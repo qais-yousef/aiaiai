@@ -93,19 +93,11 @@ list_projects()
 	done
 }
 
-# Send an e-mail reply to the patch author. This function relies on the various
-# global variables, most notably:
-#   o "from" - address of the submitter of the patch under test, our reply will
-#              be sent there
-#   o "to" - addresses of the recipients of the patch under test, these will be
-#            carbon-copied
-#   o "subj" - subject of patch under test, the reply will have the same
-#              subject
-#   o "id" - message ID of the patch under test, the reply will have reference
-#            this ID
+# Send an e-mail reply to the patch submitter.
 send_email()
 {
-	compose_email "$from" "$to" "$subj" "$id" > "$tmpdir/mail"
+	compose_email "$reply_to" "$reply_cc" "$reply_subj" "$reply_id" \
+		> "$tmpdir/mail"
 
 	[ -z "$verbose" ] || cat -- "$tmpdir/mail" >&2
 
@@ -121,7 +113,6 @@ send_email()
 # carbon-copying anyone else.
 error_no_project_specified()
 {
-	to=
 	send_email <<EOF
 Sorry, but you have not specified the project name. Please, specify it
 using the "+" symbol in the e-mail address of $cfg_ownname. For example,
@@ -142,7 +133,6 @@ EOF
 # else.
 error_project_not_found()
 {
-	to=
 	send_email <<EOF
 Sorry, but project "$prj" is not supported. List of projects $cfg_ownname
 currently supports:
@@ -156,10 +146,8 @@ EOF
 }
 
 # This function is called when the 'aiaiai-test-patchest' fails. This most
-# probably means a bug or configuration issues. This function sends an e-mail
-# notification about this. The notification is sent to the patch submitter and,
-# depending on the "reply_to_all" configuration option, everyone in "To:" and
-# "Cc:".
+# probably means a bug or configuration issues. This function sends
+# corresponding e-mail notification.
 error_test_patchset_failed()
 {
 	send_email <<EOF
@@ -170,9 +158,7 @@ EOF
 }
 
 # This is a helper function which sends a notification about the patch under
-# test being accepted for testing. The notification e-mail is sent to the patch
-# submitter and, depending on the "reply_to_all" configuration option, everyone
-# in "To:" and "Cc:".
+# test being accepted for testing.
 send_accepted_email()
 {
 	send_email <<EOF
@@ -184,9 +170,8 @@ has been accepted by $cfg_ownname and scheduled for testing.
 EOF
 }
 
-# This is a helper function which sends the results of testing back to the
-# patch submitter and, depending on the "reply_to_all" configuration option,
-# everyone in "To:" and "Cc:".
+# This is a helper function which sends the reply e-mail with the results of
+# testing.
 send_results_email()
 {
 	send_email <<EOF
@@ -300,30 +285,36 @@ mbox="$tmpdir/mbox"
 
 # Find out the project name
 prj="$(fetch_project_name "$to" "$cfg_ownmail")"
-
 verbose "Project \"$prj\""
+
+# Replies will refer the first patch of the patch-set under test
+reply_subj="$subj"
+reply_id="$id"
+# Replies will be sent to the patch submitter
+reply_to="$from"
+# And do not Cc anyone thus far
+reply_cc=
 
 # Reject the e-mail if the project has not been specified
 if [ -z "$prj" ]; then
 	error_no_project_specified
 fi
 
-# Fetch project configuration
+# Get the project configuration
 parse_prj_config "$cfgfile" "$prj"
 
-# Check if we have this project in our config file
+# Check if the project specified by the submitter exists
 if [ -z "$pcfg_name" ]; then
 	error_project_not_found
 fi
 
-# Merge the "To" and "Cc" addresses
-to="$(merge_addresses "$to" "$cc")"
-
+# Create the Cc list for replies that we'll be sending
 if [ "$pcfg_reply_to_all" != "1" ]; then
-	to=
+	# Replies all the patch recepients will be CCed
+	reply_cc="$(merge_addresses "$to" "$cc")"
+	reply_cc=$(strip_address "$reply_cc" "$cfg_ownmail")
 else
-	# Strip own address
-	to=$(strip_address "$to" "$cfg_ownmail")
+	reply_cc=
 fi
 
 # Notify the sender that the patches have been accepted
