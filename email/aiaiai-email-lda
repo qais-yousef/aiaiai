@@ -69,9 +69,7 @@ reject()
 {
 	local file="$1"; shift
 	local reason="$1" shift
-	local subj
-	local from
-	local id
+	local subj from id
 
 	fetch_header_or_die subj "Subject" < "$file"
 	fetch_header_or_die from "From" < "$file"
@@ -85,32 +83,31 @@ reject()
 reject_and_reply()
 {
 	local file="$1"; shift
-	local subj
-	local from
-	local id
-	local to
-	local cc
+	local reply_to reply_cc reply_id reply_subj to cc
 
-	fetch_header_or_die subj "Subject" < "$file"
-	fetch_header_or_die from "From" < "$file"
-	fetch_header_or_die id "Message-Id" < "$file"
+	fetch_header_or_die reply_to "From" < "$file"
+	fetch_header_or_die reply_subj "Subject" < "$file"
+	fetch_header_or_die reply_id "Message-Id" < "$file"
 
 	to="$(fetch_header "To" < "$mbox")"
 	cc="$(fetch_header "Cc" < "$mbox")"
-	to="$(merge_addresses "$to" "$cc")"
 
-	prj="$(fetch_project_name "$to" "$cfg_ownmail")"
+	reply_cc="$(merge_addresses "$to" "$cc")"
+
+	prj="$(fetch_project_name "$reply_cc" "$cfg_ownmail")"
 	verbose "Project \"$prj\""
 	parse_prj_config "$cfgfile" "$prj"
 
 	if [ -n "$pcfg_name" ] && [ "$pcfg_reply_to_all" = "1" ]; then
 		# Strip own address
-		to=$(strip_address "$to" "$cfg_ownmail")
+		reply_cc="$(merge_addresses "$reply_cc" "$pcfg_always_cc")"
+		reply_cc=$(strip_address "$reply_cc" "$cfg_ownmail")
 	else
-		to=
+		reply_cc=
 	fi
 
-	compose_email "$from" "$to" "$subj" "$id" > "$lda_tmp/mail"
+	compose_email "$reply_to" "$reply_cc" "$reply_subj" "$reply_id" \
+		> "$lda_tmp/mail"
 
 	[ -z "$verbose" ] || cat -- "$lda_tmp/mail" >&2
 
