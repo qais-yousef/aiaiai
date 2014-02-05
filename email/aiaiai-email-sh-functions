@@ -76,7 +76,7 @@ strip_address()
 	# address is equivalent to the local+xyz@domain address.
 	printf "%s" "$list" | LC_ALL=C sed -e "s/[^,]*$l+\{0,1\}[^@]*@$d[^,]*//g" \
 					   -e "s/,,/,/g" -e "s/^,//" -e "s/,$//" \
-					   -e "s/[[:blank:]]\+//g"
+					   -e "s/[[:blank:]]\+/ /g"
 }
 
 # Fetch project name from a list of e-mail address. The project is specified like
@@ -109,7 +109,7 @@ merge_addresses()
 	local list="$(printf "%s" "$addr1,$addr2" | LC_ALL=C tr -d "\n")"
 
 	printf "%s" "$list" | LC_ALL=C sed -e "s/,,/,/g" -e "s/^,//" \
-		                           -e "s/,$//" -e "s/[[:blank:]]\+//g"
+		                           -e "s/,$//" -e "s/[[:blank:]]\+/ /g"
 }
 
 # A helper function for 'ini_config_get()' (from libshell) which fails when
