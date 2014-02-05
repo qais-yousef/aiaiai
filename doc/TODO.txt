@@ -34,6 +34,10 @@ implementing them.
     instead of just failing. This is probably more user-friendly.
   * Describe some review policy, e.g., how many days I promise to wait
     for review/reply before applying patches.
+  * Re-arrange the source code structure so that the internal scripts
+    would all sit in a separate sub-directory. Internal scripts are
+    those which users are not supposed to run directly. For example,
+    'aiaiai-locker' is one of them.
 
 * Functional improvements
   * Gcc 4.8 change the format of warnings and now they look like this:
