@@ -278,10 +278,9 @@ fi
 fetch_header_or_die subj "Subject" < "$mbox"
 fetch_header_or_die from "From" < "$mbox"
 fetch_header_or_die id "Message-Id" < "$mbox"
-msgname="$from: $subj (Message-Id: $id)"
 
-echo >&2
-verbose "Testing mbox: \"$msgname\""
+printf "\n"
+verbose "Testing mbox: \"$from: $subj (Message-Id: $id)\""
 verbose "parsing config file \"$cfgfile\""
 
 parse_config "$cfgfile"
