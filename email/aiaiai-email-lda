@@ -75,8 +75,8 @@ reject()
 	fetch_header_or_die from "From" < "$file"
 	fetch_header_or_die id "Message-Id" < "$file"
 
-	message "Rejecting \"$from: $subj (Message-Id: $id)\""
-	message "Reason: $1"
+	verbose "Rejecting \"$from: $subj (Message-Id: $id)\""
+	verbose "Reason: $1"
 	rm $verbose -- "$file" >&2
 }
 
@@ -165,18 +165,18 @@ series_is_complete()
 		if [ -n "$first_parent" ]; then
 			# The first patch has a parent, must be the cover letter
 			if [ -f "$dir/0" ]; then
-				message "Series in $dir is complete and has cover letter"
+				verbose "Series in $dir is complete and has cover letter"
 				return 0
 			else
-				message "Series in $dir is not complete, we are missing the cover letter"
+				verbose "Series in $dir is not complete, we are missing the cover letter"
 				return 1
 			fi
 		else
-			message "Series is in $dir complete no cover letter was sent"
+			verbose "Series is in $dir complete no cover letter was sent"
 			return 0
 		fi
 	else
-		message "Series in $dir is not complete, we have only $cnt out of $n patches"
+		verbose "Series in $dir is not complete, we have only $cnt out of $n patches"
 		return 1
 	fi
 }
@@ -186,7 +186,7 @@ queue_series()
 	local dir="$1"; shift
 	local n="$1"; shift
 
-	message "Patch-set at \"$dir\" is complete, queue it"
+	verbose "Patch-set at \"$dir\" is complete, queue it"
 	# Don't add the 0th patch to the final mbox, as it is just the
 	# cover letter and does not contain any patch
 	for fname in $(ls --ignore=0 -A -- "$dir" | sort -n); do
@@ -211,12 +211,12 @@ queue_series()
 		# "sponge" tool, though.
 		exec 3<$mbox
 		rm $verbose "$mbox" >&2
-		message "Adding \"$subj\""
+		verbose "Adding \"$subj\""
 		formail -s formail -I "$subj" <&3 > "$mbox"
 
 		exec 3<$mbox
 		rm $verbose "$mbox" >&2
-		message "Adding \"$id\""
+		verbose "Adding \"$id\""
 		formail -s formail -I "$id" <&3 > "$mbox"
 	fi
 	queue_mboxfile
@@ -234,7 +234,7 @@ move_to_series()
 	fetch_header_or_die subj "Subject" < "$file"
 	m="$(subject_m "$subj")"
 
-	message "Moving patch (\"$subj\") the series directory"
+	verbose "Moving patch (\"$subj\") the series directory"
 
 	# Sanity check - n has to be the same
 	if ! [ "$(subject_n "$subj")" -eq "$n" ]; then
@@ -294,21 +294,21 @@ EOF
 	if [ -z "$staging_relatives" ] && [ -z "$series_relatives" ]; then
 		# Save the file in the staging area
 		fname="$(seq_name "$staging" "${date}_${m}-of-${n}")"
-		message "No relatives found, temporarily save in staging"
+		verbose "No relatives found, temporarily save in staging"
 		mv $verbose -- "$mbox" "$fname" >&2
 		return
 	fi
 
-	message "Found relatives"
+	verbose "Found relatives"
 
 	if [ -z "$series_relatives" ]; then
 		# The series directory does not exist yet - create it
 		dir="$(seq_name "$series" "${date}_${n}")"
-		message "Creating the series directory \"$dir\""
+		verbose "Creating the series directory \"$dir\""
 		mkdir $verbose -- "$dir" >&2
 	else
 		dir="$(printf "%s" "$series_relatives" | sed -e "s/\(.*\)\/.*/\1/" | sort -u)"
-		message "Found series directory \"$dir\""
+		verbose "Found series directory \"$dir\""
 		[ "$(printf "%s" "$dir" | wc -l)" -eq 0 ] ||
 			die "Relatives live in different series directories!"
 	fi
@@ -342,13 +342,13 @@ process_mbox()
 
 	# Make sure important headers are there
 	grep -i -q -- "^Message-Id:[[:blank:]]" "$mbox" ||
-		{ message "The \"Message-Id:\" header not found, ignoring"; return; }
+		{ verbose "The \"Message-Id:\" header not found, ignoring"; return; }
 	grep -i -q -- "^From:[[:blank:]]" "$mbox" ||
-		{ message "The \"From:\" header not found, ignoring"; return; }
+		{ verbose "The \"From:\" header not found, ignoring"; return; }
 	grep -i -q -- "^To:[[:blank:]]" "$mbox" ||
-		{ message "The \"To:\" header not found, ignoring"; return; }
+		{ verbose "The \"To:\" header not found, ignoring"; return; }
 	grep -i -q -- "^Subject:[[:blank:]]" "$mbox" ||
-		{ message "The \"Subject:\" header not found, ignoring"; return; }
+		{ verbose "The \"Subject:\" header not found, ignoring"; return; }
 
 	local subj="$(fetch_header "Subject" < "$mbox")"
 	local from="$(fetch_header "From" < "$mbox")"
@@ -368,10 +368,10 @@ process_mbox()
 	n="$(subject_n "$subj")"
 
 	if [ -z "$m" ]; then
-		message "Queueing stand-alone patch \"$subj\""
+		verbose "Queueing stand-alone patch \"$subj\""
 		queue_mboxfile
 	else
-		message "Processing member $m/$n of a series (\"$subj\")"
+		verbose "Processing member $m/$n of a series (\"$subj\")"
 		[ "$n" -ne 0 ] || \
 			{ reject "$mbox" "Prefix \"$prefix_format\" cannot have n = 0";
 			  return; }
@@ -487,9 +487,9 @@ while IFS= read -r line; do
 	   printf "%s" "$line" | grep -i -q -- "^From [[:xdigit:]]\{40\} .\+$"; then
 		if [ -z "$first" ]; then
 			if [ -n "$prev" ]; then
-				message "The last line of previous mbox is not blank"
-				message "line: $line"
-				message "prev: $prev"
+				verbose "The last line of previous mbox is not blank"
+				verbose "line: $line"
+				verbose "prev: $prev"
 				die "exiting"
 			fi
 			process_mbox
