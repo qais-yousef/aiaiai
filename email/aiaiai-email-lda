@@ -344,13 +344,11 @@ process_mbox()
 		{ reject "$mbox" "\"$prefix_format\" prefix not found"; return; }
 
 	# If the patch prefix contains m/n, fetch m and n.
-	local m
-	local n
+	local m n
 	m="$(subject_m "$subj")"
 	n="$(subject_n "$subj")"
 
-	if [ -z "$m" ] || [ "$n" -eq 1 ]; then
-		[ "$m" != "0" ] || { message "Dropping patch \"0/1\""; return; }
+	if [ -z "$m" ]; then
 		message "Queueing stand-alone patch \"$subj\""
 		queue_mboxfile
 	else
