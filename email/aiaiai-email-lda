@@ -137,9 +137,17 @@ generate_file_name()
 	printf "%s" "${path}${i}"
 }
 
+# Queue the mbox file for validation. Basically queuing is about moving the
+# file to the queue directory, and the Aiaiai dispatcher will then pick it from
+# there (it uses inotify to get notifications about new files in this
+# directories). This function also saves a copy of the mbox in the
+# 'queue_saved' directory. The mbox may contain a single patch, or entire
+# patch-set.
 queue_mboxfile()
 {
+	local mbox="$mbox"; shift
 	local fname="$(generate_file_name "$queue" "$n")"
+
 	cp $verbose -- "$mbox" "$queue_saved/${fname##*/}" >&2
 	mv $verbose -- "$mbox" "$fname" >&2
 }
@@ -186,8 +194,10 @@ series_is_complete()
 	fi
 }
 
+# Queue a complete series of patches.
 queue_series()
 {
+	local mbox="$1"; shift
 	local dir="$1"; shift
 	local n="$1"; shift
 
@@ -224,7 +234,7 @@ queue_series()
 		verbose "Adding \"$id\""
 		formail -s formail -I "$id" <&3 > "$mbox"
 	fi
-	queue_mboxfile
+	queue_mboxfile "$mbox"
 	rm $verbose -rf -- "$dir" >&2
 }
 
@@ -255,13 +265,22 @@ move_to_series()
 	fi
 }
 
+# Process a patch which is parte of a series. The patch is passed via "$1". Its
+# message ID is passed via "$2". Its number in the series is passed via "$3",
+# and amount of patches in the series is passed via "$4". This function will
+# try to collect all patches belonging to the series, and when it receives the
+# last patch, it queues the entire series.
+#
+# The series is collected using message ID headers - each patch, except of may
+# be the first one, must refer the previous patches ID via teh "In-Reply-To"
+# header.
 process_series_mbox()
 {
+	local mbox="$1"; shift
 	local id="$1"; shift
 	local m="$1"; shift
 	local n="$1"; shift
-	local fname
-	local dir
+	local fname dir
 
 	# Only patch 0/n or 1/n is allowed to have no parent
 	local parent_id="$(fetch_header "In-Reply-To" < "$mbox")"
@@ -328,7 +347,7 @@ EOF
 
 	# If the series is complete - queue it
 	if series_is_complete "$dir" "$n"; then
-		queue_series "$dir" "$n"
+		queue_series "$mbox" "$dir" "$n"
 	fi
 }
 
@@ -382,13 +401,13 @@ process_mbox()
 
 	if [ -z "$m" ]; then
 		verbose "Queuing stand-alone patch \"$subj\""
-		queue_mboxfile
+		queue_mboxfile "$mbox"
 	else
 		verbose "Processing member $m/$n of a series (\"$subj\")"
 		[ "$n" -ne 0 ] || \
 			{ reject "$mbox" "Prefix \"$prefix_format\" cannot have n = 0";
 			  return; }
-		process_series_mbox "$id" "$m" "$n"
+		process_series_mbox "$mbox" "$id" "$m" "$n"
 	fi
 }
 
