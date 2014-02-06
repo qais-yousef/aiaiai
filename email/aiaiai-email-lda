@@ -159,18 +159,24 @@ series_is_complete()
 	local n="$1" ; shift
 
 	# First check if we have all the non-cover patches yet
-	if [ "$(ls -1 --ignore=0 -- "$dir" | wc -l)" -eq "$n" ]; then
+	local cnt="$(ls -1 --ignore=0 -- "$dir" | wc -l)"
+	if [ "$cnt" -eq "$n" ]; then
 		local first_parent="$(fetch_header "In-Reply-To" < "$dir/1")"
-		if [ -n "$first_parent" ] && ! [ -f "$dir/0" ]; then
-			# Series is not complete, we are missing the cover
-			# letter
-			return 1
+		if [ -n "$first_parent" ]; then
+			# The first patch has a parent, must be the cover letter
+			if [ -f "$dir/0" ]; then
+				message "Series in $dir is complete and has cover letter"
+				return 0
+			else
+				message "Series in $dir is not complete, we are missing the cover letter"
+				return 1
+			fi
 		else
-			# Series is complete, no cover letter was sent
+			message "Series is in $dir complete no cover letter was sent"
 			return 0
 		fi
 	else
-		# Don't have all the patches yet
+		message "Series in $dir is not complete, we have only $cnt out of $n patches"
 		return 1
 	fi
 }
