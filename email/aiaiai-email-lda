@@ -89,8 +89,8 @@ reject_and_reply()
 	fetch_header_or_die reply_subj "Subject" < "$file"
 	fetch_header_or_die reply_id "Message-Id" < "$file"
 
-	to="$(fetch_header "To" < "$mbox")"
-	cc="$(fetch_header "Cc" < "$mbox")"
+	to="$(fetch_header "To" < "$file")"
+	cc="$(fetch_header "Cc" < "$file")"
 
 	reply_cc="$(merge_addresses "$to" "$cc")"
 
