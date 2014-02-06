@@ -122,7 +122,7 @@ reject_and_reply()
 # Currently we use the same format: <date>_<suffix>-<counter>, where <date> is
 # the current date (taken from the global $date variable), <suffix> is the
 # a suffix supplied by the caller via "$2", and <counter> is usually 0, but if
-# there is alreay a file with such name, it gets increased to 1, and so on.
+# there is already a file with such name, it gets increased to 1, and so on.
 generate_file_name()
 {
 	local where="$1"; shift
@@ -381,7 +381,7 @@ process_mbox()
 	n="$(subject_n "$subj")"
 
 	if [ -z "$m" ]; then
-		verbose "Queueing stand-alone patch \"$subj\""
+		verbose "Queuing stand-alone patch \"$subj\""
 		queue_mboxfile
 	else
 		verbose "Processing member $m/$n of a series (\"$subj\")"
