@@ -126,7 +126,7 @@ seq_name()
 	local name="$1"; shift
 	local i=0
 
-	while [ -e "${where}/${name}_${i}" ]; do
+	while [ -e "${where}/${name}-${i}" ]; do
 		i="$(($i+1))"
 	done
 	printf "%s" "$where/$name-$i"
