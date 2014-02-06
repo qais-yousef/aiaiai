@@ -134,7 +134,7 @@ seq_name()
 
 queue_mboxfile()
 {
-	local fname="$(seq_name "$queue" "${date}_${m}-of-${n}")"
+	local fname="$(seq_name "$queue" "${date}_${n}")"
 	cp $verbose -- "$mbox" "$queue_saved/${fname##*/}" >&2
 	mv $verbose -- "$mbox" "$fname" >&2
 }
