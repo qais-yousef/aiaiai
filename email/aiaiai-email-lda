@@ -123,18 +123,20 @@ reject_and_reply()
 seq_name()
 {
 	local where="$1"; shift
-	local name="$1"; shift
+	local suffix="$1"; shift
+	local path="$where/${date}_${suffix}-"
 	local i=0
 
-	while [ -e "${where}/${name}-${i}" ]; do
+	while [ -e "${path}${i}" ]; do
 		i="$(($i+1))"
 	done
-	printf "%s" "$where/$name-$i"
+
+	printf "%s" "${path}${i}"
 }
 
 queue_mboxfile()
 {
-	local fname="$(seq_name "$queue" "${date}_${n}")"
+	local fname="$(seq_name "$queue" "$n")"
 	cp $verbose -- "$mbox" "$queue_saved/${fname##*/}" >&2
 	mv $verbose -- "$mbox" "$fname" >&2
 }
@@ -293,7 +295,7 @@ EOF
 
 	if [ -z "$staging_relatives" ] && [ -z "$series_relatives" ]; then
 		# Save the file in the staging area
-		fname="$(seq_name "$staging" "${date}_${m}-of-${n}")"
+		fname="$(seq_name "$staging" "$m-of-$n")"
 		verbose "No relatives found, temporarily save in staging"
 		mv $verbose -- "$mbox" "$fname" >&2
 		return
@@ -303,7 +305,7 @@ EOF
 
 	if [ -z "$series_relatives" ]; then
 		# The series directory does not exist yet - create it
-		dir="$(seq_name "$series" "${date}_${n}")"
+		dir="$(seq_name "$series" "$n")"
 		verbose "Creating the series directory \"$dir\""
 		mkdir $verbose -- "$dir" >&2
 	else
