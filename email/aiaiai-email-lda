@@ -340,9 +340,17 @@ separator()
 	fi
 }
 
-# Process one e-mail stored in the $mbox temporary file
+# Process one e-mail. This e-mail may be part of a patch-set, or an individual
+# patch, or not a patch at all. The patches and non-patches are distinguished
+# using the subject (see the 'subject_check()' function). Non-patches are
+# dropped. Individual patches are queued right away. Patch-sets are stored in
+# a temporary directory and queued only when all the of them are collected.
+#
+# The e-mail to process is passed in "$1" in form of a path to the mbox file.
 process_mbox()
 {
+	local mbox="$1";
+
 	separator
 
 	# Make sure important headers are there
@@ -472,7 +480,9 @@ mkdir -p $verbose -- "$staging" "$series" "$mail" "$queue" "$queue_saved" >&2
 # All file we create have the date in the name
 date="$(date "+%Y-%m-%d_%H:%M:%S")"
 
-# Currently processed patch is stored in $mbox
+# We get the input from stdin, and it may contain several mails. We then
+# separate them, and process one-by-one. And the mail which is currently being
+# processed is stored in this temporary file.
 mbox="$(mktemp -t "$PROG.mbox.XXXX")"
 
 # We lock the lda and queue directories when using them
@@ -497,7 +507,7 @@ while IFS= read -r line; do
 				verbose "prev: $prev"
 				die "exiting"
 			fi
-			process_mbox
+			process_mbox "$mbox"
 			truncate -s0 -- "$mbox"
 		fi
 	else
@@ -508,7 +518,7 @@ while IFS= read -r line; do
 done
 
 printf "%s\n" "$prev" >> "$mbox"
-process_mbox
+process_mbox "$mbox"
 
 [ -z "$incomplete_min" ] || reap_old "$lda_tmp" "$incomplete_min"
 [ -z "$archive_min" ] || reap_old "$mail" "$archive_min"
