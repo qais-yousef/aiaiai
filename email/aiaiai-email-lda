@@ -175,6 +175,48 @@ series_is_complete()
 	fi
 }
 
+queue_series()
+{
+	local dir="$1"; shift
+	local n="$1"; shift
+
+	message "Patch-set at \"$dir\" is complete, queue it"
+	# Don't add the 0th patch to the final mbox, as it is just the
+	# cover letter and does not contain any patch
+	for fname in $(ls --ignore=0 -A -- "$dir" | sort -n); do
+		cat -- "$dir/$fname" >> "$mbox"
+		printf "\n" >> "$mbox"
+	done
+
+	if [ -f "$dir/0" ]; then
+		# Save the subject and message ID of the cover letter in the
+		# final mbox in order to be able to reply to the cover letter
+		# later.
+		local subj="$(fetch_header "Subject" < "$dir/0")"
+		subj="X-Aiaiai-Cover-Letter-Subject: $subj"
+
+		local id="$(fetch_header "Message-Id" < "$dir/0")"
+		id="X-Aiaiai-Cover-Letter-Message-Id: $id"
+
+		# The below trick allows us to avoid creating a separate
+		# temporary file: open the "$mbox" file, unlink, use the open
+		# file descriptor for reading and redirect the output to the
+		# new version of the "$mbox" file. We could instead use the
+		# "sponge" tool, though.
+		exec 3<$mbox
+		rm $verbose "$mbox" >&2
+		message "Adding \"$subj\""
+		formail -s formail -I "$subj" <&3 > "$mbox"
+
+		exec 3<$mbox
+		rm $verbose "$mbox" >&2
+		message "Adding \"$id\""
+		formail -s formail -I "$id" <&3 > "$mbox"
+	fi
+	queue_mboxfile
+	rm $verbose -rf -- "$dir" >&2
+}
+
 move_to_series()
 {
 	local file="$1"; shift
@@ -275,41 +317,7 @@ EOF
 
 	# If the series is complete - queue it
 	if series_is_complete "$dir" "$n"; then
-		message "Patch-set at \"$dir\" is complete, queue it"
-		# Don't add the 0th patch to the final mbox, as it is just the
-		# cover letter and does not contain any patch
-		for fname in $(ls --ignore=0 -A -- "$dir" | sort -n); do
-			cat -- "$dir/$fname" >> "$mbox"
-			echo >> "$mbox"
-		done
-
-		if [ -f "$dir/0" ]; then
-			# Save the subject and message ID of the cover letter
-			# in the final mbox in order to be able to reply to the
-			# cover letter later.
-			local subj="$(fetch_header "Subject" < "$dir/0")"
-			subj="X-Aiaiai-Cover-Letter-Subject: $subj"
-
-			local id="$(fetch_header "Message-Id" < "$dir/0")"
-			id="X-Aiaiai-Cover-Letter-Message-Id: $id"
-
-			# The below trick allows us to avoid creating a
-			# separate temporary file: open the "$mbox" file,
-			# unlink, use the open file descriptor for reading and
-			# redirect the output to the new version of the "$mbox"
-			# file. We could instead use the "sponge" tool, though.
-			exec 3<$mbox
-			rm $verbose "$mbox" >&2
-			message "Adding \"$subj\""
-			formail -s formail -I "$subj" <&3 > "$mbox"
-
-			exec 3<$mbox
-			rm $verbose "$mbox" >&2
-			message "Adding \"$id\""
-			formail -s formail -I "$id" <&3 > "$mbox"
-		fi
-		queue_mboxfile
-		rm $verbose -rf -- "$dir" >&2
+		queue_series "$dir" "$n"
 	fi
 }
 
