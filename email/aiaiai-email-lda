@@ -145,7 +145,8 @@ generate_file_name()
 # patch-set.
 queue_mboxfile()
 {
-	local mbox="$mbox"; shift
+	local mbox="$1"; shift
+	local n="$1"; shift
 	local fname="$(generate_file_name "$queue" "$n")"
 
 	cp $verbose -- "$mbox" "$queue_saved/${fname##*/}" >&2
@@ -169,7 +170,7 @@ find_relatives()
 series_is_complete()
 {
 	local dir="$1"; shift
-	local n="$1" ; shift
+	local n="$1"; shift
 
 	# First check if we have all the non-cover patches yet
 	local cnt="$(ls -1 --ignore=0 -- "$dir" | wc -l)"
@@ -234,7 +235,7 @@ queue_series()
 		verbose "Adding \"$id\""
 		formail -s formail -I "$id" <&3 > "$mbox"
 	fi
-	queue_mboxfile "$mbox"
+	queue_mboxfile "$mbox" "$n"
 	rm $verbose -rf -- "$dir" >&2
 }
 
@@ -242,9 +243,9 @@ move_to_series()
 {
 	local file="$1"; shift
 	local dir="$1"; shift
+	local m="$1"; shift
 	local n="$1"; shift
 	local subj
-	local m
 
 	fetch_header_or_die subj "Subject" < "$file"
 	m="$(subject_m "$subj")"
@@ -338,11 +339,11 @@ EOF
 	fi
 
 	# Move the relatives from the staging to the series directory
-	move_to_series "$mbox" "$dir" "$n"
+	move_to_series "$mbox" "$dir" "$m" "$n"
 
 	local relative
 	for relative in $staging_relatives; do
-		move_to_series "$relative" "$dir" "$n"
+		move_to_series "$relative" "$dir" "$m" "$n"
 	done
 
 	# If the series is complete - queue it
@@ -395,13 +396,12 @@ process_mbox()
 		{ reject "$mbox" "\"$prefix_format\" prefix not found"; return; }
 
 	# If the patch prefix contains m/n, fetch m and n.
-	local m n
-	m="$(subject_m "$subj")"
-	n="$(subject_n "$subj")"
+	local m="$(subject_m "$subj")"
+	local n="$(subject_n "$subj")"
 
 	if [ -z "$m" ]; then
 		verbose "Queuing stand-alone patch \"$subj\""
-		queue_mboxfile "$mbox"
+		queue_mboxfile "$mbox" "$n"
 	else
 		verbose "Processing member $m/$n of a series (\"$subj\")"
 		[ "$n" -ne 0 ] || \
