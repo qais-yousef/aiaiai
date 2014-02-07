@@ -27,17 +27,19 @@ show_usage()
 	cat <<-EOF
 Usage: $PROG [options] -- ...
 
-This is an internal aiaiai helper program which runs various source code
-analysis tools when building the kernel. Options for $PROG has to go first,
+This is an internal Aiaiai helper program which runs various source code
+analysis tools when building the kernel. Options for "$PROG" has to go first,
 then there has to be a "--" delimiter, and then any number of options which are
 not interpreted by this script but passed further to the code analysis tool
-(sparse or smatch).
+(sparse, smatch, etc).
 
 Options:
       --sparse           check with sparse;
       --smatch           check with smatch;
       --cppcheck         check with cppcheck;
-      --coccinelle       check with coccinelle (spatch);
+      --coccinelle=PATH  check with coccinelle (spatch) using coccinelle
+                         scripts from PATH; the scripts have to have ".cocci"
+                         extention and may reside anywhere under PATH
       --check-only=FILE  check only files listed in FILE;
   -h, --help             show this text and exit.
 EOF
@@ -64,7 +66,11 @@ run_coccinelle()
 	local spatch spatches flags pid
 	local pids=
 
-	spatches="$(find $srcdir -name '*.cocci')"
+	spatches="$(find "$cocci_path" -name '*.cocci')"
+	if [ -z "$spatches" ]; then
+		die "no coccinelle scripts (*.cocci) found in \"$cocci_path\""
+	fi
+
 	for spatch in $spatches; do
 		# Coccinelle is not stable enough so far and dies because of
 		# internal issues sometimes or just never stops. So we specify
@@ -97,7 +103,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o h --long sparse,smatch,cppcheck,coccinelle,check-only:,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o h --long sparse,smatch,cppcheck,coccinelle:,check-only:,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -107,6 +113,7 @@ run_sparse=
 run_smatch=
 run_cppcheck=
 run_coccinelle=
+cocci_path=
 check_only=
 
 while true; do
@@ -125,7 +132,9 @@ while true; do
 		;;
 	--coccinelle)
 		run_coccinelle=1
+		cocci_path="$(opt_check_dir "$1" "$2")"
 		program_required "spatch" "Usually Linux distribution provide a 'spatch' or 'coccinelle' package"
+		shift
 		;;
 	--check-only)
 		check_only="$(opt_check_read "$1" "$2")"

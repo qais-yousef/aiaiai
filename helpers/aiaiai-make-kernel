@@ -52,7 +52,9 @@ Options:
       --sparse           check with sparse while building;
       --smatch           check with smatch while building;
       --cppcheck         check with cppcheck while building;
-      --coccinelle       check with coccinelle (spatch) while building;
+      --coccinelle=PATH  check with coccinelle (spatch) using coccinelle
+                         scripts from PATH; the scripts have to have ".cocci"
+                         extention and may reside anywhere under PATH
       --check-only=FILE  check only files listed in FILE;
   -M, --kmake-opts       additional options to append to the final kernel
                          compilation 'make' command
@@ -136,7 +138,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o o:,D:,j:,O:,E:,k:,a:,M:,v,h --long objdir:,defconfig:,jobs:,stdout:,stderr:,keep-going,arch:,sparse,smatch,cppcheck,coccinelle,check-only:,kmake-opts:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o o:,D:,j:,O:,E:,k:,a:,M:,v,h --long objdir:,defconfig:,jobs:,stdout:,stderr:,keep-going,arch:,sparse,smatch,cppcheck,coccinelle:,check-only:,kmake-opts:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -150,6 +152,7 @@ sparse=
 smatch=
 cppcheck=
 coccinelle=
+cocci_path=
 check_only=
 check=0
 kmake_opts=
@@ -203,8 +206,10 @@ while true; do
 		check=1
 		;;
 	--coccinelle)
-		coccinelle="--coccinelle"
+		cocci_path="$(opt_check_dir "$1" "$2")"
+		coccinelle="--coccinelle=$cocci_path"
 		check=1
+		shift
 		;;
 	--check-only)
 		check_only="--check-only $(opt_check_read "$1" "$2")"
