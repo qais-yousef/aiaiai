@@ -1,25 +1,52 @@
-Aiaiai is a tool for validating Linux kernel patches using various available
-open-source tools. Aiaiai is useful for both subsystem maintainers and
-kernel developers.
+Aiaiai is a tool for validating Linux kernel patches using various
+open-source projects.
 
-Aiaiai usage scenarios include:
+Aiaiai customers are Linux kernel subsystem maintainers and developers.
 
-1. a developer has a patch-set which he/she wants to validate before submitting
-   to the maintainer or the subsystem mailing list
-2. a subsystem maintainer validates incoming patches before merging them to the
-   subsystem kernel tree
+Aiaiai usage scenarios include.
 
-Aiaiai roughly works as follows.
+1. A Linux kernel developer has a patch or patch-set which he/she is
+   going to submitting to the maintainer or the subsystem mailing list.
+   The developer uses Aiaiai to validate the patch before sending it
+   out.
+2. A subsystem maintainer regularly receives patches from the developer
+   community. The maintainer validates the patches before merging them
+   into the subsystem kernel tree.
+3. A group of developers work together on a kernel subsystem. Developers
+   send their patches to the mailing list, where other group members
+   review the patches, and eventually the maintainer applies the patches
+   to the central git repository. The group uses Aiaiai for validating
+   patches submitted to the mailing list. The Aiaiai e-mail front-end is
+   used for dealing with the mailing list. It identifies patches and
+   patch-sets, validates them, and sends validation results back to the
+   submitter and (optionally) the mailing list.
+4. Similarly, a group of developers works on a kernel subsystem, but
+   uses gerrit for review. The group has a Jenkins server, which has the
+   gerrit plugin installed. For every new patch in gerrit, or a new
+   version of a patch, the plugin runs the Aiaiai gerrit front-end
+   script, which validates the patch and stores the results in the
+   gerrit comments for this patch.
 
-1. Build the kernel before applying the patch-set and after applying the
-   patch-set.
-2. Run the following static analysis tools while building: sparse, smatch,
-   coccinelle, cppcheck.
-3. Compare the resulting build logs in a smart way (taking into account line
-   number changes, etc)
-3. Report about new gcc warnings and coccinelle/sparse/smatch/cppcheck
-   complaints. If checkpatch.pl has any complaints, they are also reported by
-   Aiaiai.
+Here is a brief description how Aiaiai validates patches.
+
+1. Aiaiai builds the baseline, i.e., the kernel tree before the patches
+   are applied. Aiaiai uses parallel builds.
+2. Aiaiai applies the patches and builds the kernel tree again.
+3. When doing steps 1 and 2, Aiaiai also uses the following open-source
+   static analysis tools: sparse, smatch, cppcheck, and coccinelle (AKA
+   spatch).
+4. Aiaiai compares the 2 resulting build logs in a smart way (taking
+   into account line number changes, etc)
+5. In case of patch-sets, Aiaiai also runs the bisectability test,
+   i.e., it applies the patches one-by-one and verifies that the kernel
+   tree compiles a each step.
+6. Aiaiai reports about all the new warnings from gcc, sparse, smatch,
+   cppcheck, and coccinelle. Aiaiai also runs the 'checkpatch.pl' script
+   for every patch of the patch-set and reports about all the warnings.
+7. The report is either printed to the console, or sent to the submitter
+   and/or the mailing list by e-mail, or stored in the gerrit as a
+   review comment for the patch. This depends on whether the e-mail or
+   gerrit front-ends are used or not.
 
 Here is an example of Aiaiai report.
 
@@ -41,7 +68,8 @@ Here is an example of Aiaiai report.
 --------------------------------------------------------------------------------
 
 o Line 1 says that configuration "my_defconfig" for architecture i386 has been
-  built (so the patch-set compiles).
+  built (so the patch-set compiles). If it didn't, Aiaiai would report
+  about that.
 o Starting from line 3 we have a diff of 2 build logs - before and after
   patching.
 o Lines 6 and 7 tell that the patch-set eliminated a warning, which is very
@@ -52,15 +80,3 @@ o Line 11 a complaint form coccinelle about locking. Worth looking closer.
   The coccinelle scripts that are part of the Linux kernel do not usually
   produce many false positives.
 o Line 12 tells that smatch has a complaint.
-
-Additionally, Aiaiai runs the bisectability test when there is more than one
-patch. It applies patches one-by-one, compiles at each step, and reports if
-compilation breaks.
-
-Aiaiai also runs checkpatch.pl for the whole patch-set (squashed) and
-every individual patch.
-
-Following are the currently implemented ways of using Aiaiai.
-1. Just run 'aiaiai-test-patchset' from console
-2. Attach Aiaiai to a mailing list using the e-mail front-end
-3. Attach Aiaiai to gerrit using a the Jenkins gerrit notifications plugin.
