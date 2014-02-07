@@ -20,6 +20,10 @@ Usage: $PROG <mbox_files>
 
 This is a simple script which concatenates several mbox files into one. The
 resulting mbox is printed to stdout.
+
+Note, using just "cat" to contatenate the files is not going to produce a
+correct mbox because there won't be the required blank line between the e-mails
+in the resulting mbox.
 EOF
 }
 
