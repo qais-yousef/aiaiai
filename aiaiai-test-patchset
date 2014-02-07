@@ -341,9 +341,6 @@ kernel_tree="$(readlink -ev -- "$1")"; shift
 defconfigs="$@"
 
 # Make sure external programs we depend on are installed
-msg="You probably did not compile it, run 'make' in the topmost aiaiai source code directory"
-program_required "remap-log" "$msg"
-program_required "aiaiai-locker" "$msg"
 program_required "git" ""
 program_required "make" ""
 program_required "patch" ""

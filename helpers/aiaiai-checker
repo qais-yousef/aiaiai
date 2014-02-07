@@ -143,8 +143,8 @@ while true; do
 	shift
 done
 
-program_required "aiaiai-locker" \
-		 "You probably did not compile it, run 'make' in the topmost aiaiai source code directory"
+compile_helpers "$srcdir"
+program_required "aiaiai-locker" ""
 
 tmpdir="$(mktemp -dt "$PROG.XXXX")"
 file_to_check="$(get_file_to_check "$@")"

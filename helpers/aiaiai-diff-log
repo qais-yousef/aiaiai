@@ -167,8 +167,9 @@ done
 
 [ "$#" = 3 ] || die "Insufficient or too many arguments"
 
-program_required "remap-log" \
-		 "You probably did not compile it, run 'make' in the topmost aiaiai source code directory"
+
+compile_helpers "$srcdir"
+program_required "remap-log" ""
 
 patch="$(readlink -ev -- "$1")"; shift
 input_log1="$(readlink -ev -- "$1")"; shift

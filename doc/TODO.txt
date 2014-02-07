@@ -35,8 +35,6 @@ implementing them.
     order to make it easier for people to start hacking Aiaiai.
   * Describe how the e-mail front-end distinguish patches and collects
     patch-sets.
-  * Teach the scripts to compile 'remap-log' if it is not compiled,
-    instead of just failing. This is probably more user-friendly.
   * Describe some review policy, e.g., how many days I promise to wait
     for review/reply before applying patches.
 

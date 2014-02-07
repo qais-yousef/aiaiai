@@ -57,6 +57,30 @@ program_required()
 	fi
 }
 
+# Some tools in the "helpers" subdirectory have to be compiled before they can
+# be sued. When Aiaiai is used from the source tree (as opposed to being
+# installed from an RPM package), the user may froget to compile the tools.
+# This function tries to compile them.
+#
+# Usage: compile_helpers <srcdir>
+#
+# where <srcdir> is the directory where the helper tools are supposed to live.
+compile_helpers()
+{
+	local srcdir="$1"
+	local tools="remap-log aiaiai-locker"
+
+	for tool in $tools; do
+		if command -v "$tool" >/dev/null 2>&1; then
+			continue
+		fi
+
+		if [ -f "$srcdir/${tool}.c" ]; then
+			make -C "$srcdir" "$tool" >/dev/null 2>&1 ||:
+		fi
+	done
+}
+
 # Fetch the first occurrence of an mbox header from a file
 # Usage: fetch_header <header_name> < <mbox_file>
 fetch_header()
