@@ -104,7 +104,7 @@ bigjobs=1
 while true; do
 	case "$1" in
 	-J|--bigjobs)
-		bigjobs=$(opt_check_number "$1" "$2")
+		bigjobs="$(opt_check_number "$1" "$2")"
 		shift
 		;;
 	-v|--verbose) verbose="--verbose"
@@ -128,7 +128,7 @@ program_required "inotifywait" ""
 [ -z "$verbose" ] || quiet=
 
 mkdir $verbose -p -- "$1" 1>&2
-queuedir=$(readlink -fv -- "$1"); shift
+queuedir="$(readlink -fv -- "$1")"; shift
 validator="$1"; shift
 
 in_fifo="$(mktemp -dt "$PROG.in_fifo.XXXX")"

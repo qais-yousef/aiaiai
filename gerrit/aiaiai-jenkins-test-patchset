@@ -115,7 +115,7 @@ quiet="-q"
 while true; do
 	case "$1" in
 	-j|--jobs)
-		jobs=$(opt_check_number "$1" "$2")
+		jobs="$(opt_check_number "$1" "$2")"
 		shift
 		;;
 	-w|--workdir)
@@ -191,11 +191,11 @@ gerrit_url="$1"; shift
 defconfigs="$@"
 
 # Extract the port number to a separate variable
-gerrit_port=$(printf "%s" "$gerrit_url" | sed -n -e 's/\([^:]*\):\{0,1\}\([0-9]*\)$/\2/p')
+gerrit_port="$(printf "%s" "$gerrit_url" | sed -n -e 's/\([^:]*\):\{0,1\}\([0-9]*\)$/\2/p')"
 if [ -z "$gerrit_port" ]; then
 	gerrit_port=29418
 else
-	gerrit_url=$(printf "%s" "$gerrit_url"  | sed -n -e 's/\([^:]*\):\{0,1\}\([0-9]*\)$/\1/p')
+	gerrit_url="$(printf "%s" "$gerrit_url"  | sed -n -e 's/\([^:]*\):\{0,1\}\([0-9]*\)$/\1/p')"
 fi
 
 verbose "Gerrit URL: $gerrit_url, port $gerrit_port"

@@ -85,9 +85,9 @@ done
 
 [ "$#" -eq 4 ] || die "Insufficient or too many arguments"
 
-mbox=$(readlink -fv -- "$1"); shift
+mbox="$(readlink -fv -- "$1")"; shift
 fail_file="$1"; shift
-queuedir=$(readlink -fv -- "$1"); shift
+queuedir="$(readlink -fv -- "$1")"; shift
 validator="$1"; shift
 
 tmpdir="$(mktemp -dt "$PROG.XXXX")"

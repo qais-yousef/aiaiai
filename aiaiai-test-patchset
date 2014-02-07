@@ -261,7 +261,7 @@ quiet="-q"
 while true; do
 	case "$1" in
 	-j|--jobs)
-		jobs=$(opt_check_number "$1" "$2")
+		jobs="$(opt_check_number "$1" "$2")"
 		shift
 		;;
 	-c|--commit-id)

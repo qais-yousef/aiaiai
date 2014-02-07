@@ -101,7 +101,7 @@ reject_and_reply()
 	if [ -n "$pcfg_name" ] && [ "$pcfg_reply_to_all" = "1" ]; then
 		# Strip own address
 		reply_cc="$(merge_addresses "$reply_cc" "$pcfg_always_cc")"
-		reply_cc=$(strip_address "$reply_cc" "$cfg_ownmail")
+		reply_cc="$(strip_address "$reply_cc" "$cfg_ownmail")"
 	else
 		reply_cc=
 	fi
@@ -440,8 +440,8 @@ process_all_series()
 	    while IFS= read -r dir; do
 		[ -n "$dir" ] || continue
 		# Extract the series number
-		n=${dir%-*}
-		n=${n##*_}
+		n="${dir%-*}"
+		n="${n##*_}"
 
 		# Clear everything from the current mbox
 		truncate -s0 -- "$mbox"
@@ -485,11 +485,11 @@ while true; do
 		test_mode=y
 		;;
 	--reap-archive)
-		archive_min=$(opt_check_number "$1" "$2")
+		archive_min="$(opt_check_number "$1" "$2")"
 		shift
 		;;
 	--reap-incomplete)
-		incomplete_min=$(opt_check_number "$1" "$2")
+		incomplete_min="$(opt_check_number "$1" "$2")"
 		shift
 		;;
 	-v|--verbose) verbose=-v
@@ -514,8 +514,8 @@ program_required "grep" ""
 program_required "sed" ""
 program_required "formail" ""
 
-workdir=$(readlink -fv -- "$1"); shift
-cfgfile=$(readlink -fv -- "$1"); shift
+workdir="$(readlink -fv -- "$1")"; shift
+cfgfile="$(readlink -fv -- "$1")"; shift
 
 parse_config "$cfgfile"
 

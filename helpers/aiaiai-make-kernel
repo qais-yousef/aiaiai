@@ -170,7 +170,7 @@ while true; do
 		shift
 		;;
 	-j|--jobs)
-		jobs=$(opt_check_number "$1" "$2")
+		jobs="$(opt_check_number "$1" "$2")"
 		shift
 		;;
 	-O|--stdout)
