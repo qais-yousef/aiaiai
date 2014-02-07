@@ -25,8 +25,9 @@ The layout of the repository.
 * aiaiai/email/
     All the scripts related to emails handling. If you use Aiaiai locally
     you do not need these scripts.
-* aiaiai/external/
-    Some external tools and files which we use are stored here.
+* aiaiai/helpers/
+    Variouls programs and scripts which Aiaiai users should not usually use
+    directly. Instead, Aiaiai scripts use them internally.
 * aiaiai/doc
     Some documentation.
 * aiaiai/tests/
@@ -145,14 +146,14 @@ sends it back to the patch submitter.
 
 * aiaiai-diff-log
     Compares 2 build logs and provides the differences. This script used the
-    'external/remap-log' tool to re-map line numbers in the warnings of the
+    'helpers/remap-log' tool to re-map line numbers in the warnings of the
     first build log to correspond to line numbers in the second build-log.
 
 * aiaiai-diff-log-helper
     A helper script for aiaiai-diff-log which sorts 2 build logs and compares
     them.  Written in Python because the shell version was too slow.
 
-* external/remap-log
+* helpers/remap-log
     This is a small C program originally written by Al Viro which helps
     comparing 2 build logs by remapping line numbers. Roughly speaking,
     'remap-log' takes the build log of the pre-patched kernel and the patch and
@@ -220,7 +221,7 @@ tool for comparing 2 build logs the smart way.
 
 If you just want to test a patch-set locally, you should use the
 'aiaiai-test-patchset' script. Do not forget to build the remap-log.c file in
-the 'external' subdirectory.
+the 'helpers' subdirectory.
 
 Here are some examples.
 
@@ -319,7 +320,7 @@ $ export PATH="$HOME/bin:$PATH"
 Coccinelle or "spatch" is a great semantic patch tool, very useful on its own.
 The Linux kernel contains a bunch of coccinelle semantic patches which catch
 various types of API abuses etc. We store a copy of these scripts in the
-"external" subdirectory.
+"helpers" subdirectory.
 
 The "spatch" tool is part of distributions like Debian and Fedora, so you most
 probably just need to install the corresponding package. The binary program is

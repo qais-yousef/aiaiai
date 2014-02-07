@@ -8,7 +8,7 @@
 # it to the mscripts directory and run.
 
 srcdir="$(readlink -ev -- ${0%/*})"
-PATH="$srcdir/..:$srcdir/../external/libshell:$PATH"
+PATH="$srcdir/..:$srcdir/../helpers/libshell:$PATH"
 
 . shell-error
 . email/aiaiai-email-sh-functions

@@ -52,13 +52,13 @@ rm -rf %{buildroot}/usr/bin/packaging
 rm -rf %{buildroot}/usr/bin/doc
 rm %{buildroot}/usr/bin/*.c
 rm %{buildroot}/usr/bin/Makefile
-rm %{buildroot}/usr/bin/external/*.c
-rm %{buildroot}/usr/bin/external/Makefile
+rm %{buildroot}/usr/bin/helpers/*.c
+rm %{buildroot}/usr/bin/helpers/Makefile
 
 %files
 %defattr(-,root,root,-)
 %{_bindir}/aiaiai*
-%{_bindir}/external
+%{_bindir}/helpers
 
 %files email
 %defattr(-,root,root,-)
