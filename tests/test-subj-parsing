@@ -4,14 +4,11 @@
 # Author: Artem Bityutskiy
 # License: GPLv2
 
-# This is a helper script to test email subject parsing in mscripts. Copy
-# it to the mscripts directory and run.
-
-srcdir="$(readlink -ev -- ${0%/*})"
-PATH="$srcdir/..:$srcdir/../helpers/libshell:$PATH"
+srcdir="$(readlink -ev -- ${0%/*}/..)"
+PATH="$srcdir/email:$srcdir/helpers/libshell:$PATH"
 
 . shell-error
-. email/aiaiai-email-sh-functions
+. aiaiai-email-sh-functions
 
 PROG="${0##*/}"
 
