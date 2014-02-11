@@ -81,7 +81,7 @@ compile_helpers()
 	done
 }
 
-# Fetch the first occurrence of an mbox header from a file
+# Fetch the first occurrence of header "$1" from the mbox file
 # Usage: fetch_header <header_name> < <mbox_file>
 fetch_header()
 {
@@ -91,6 +91,19 @@ fetch_header()
 
 	# Take only the first occurrence of the header
 	formail -z -c -x "$hdr:" | head -n1 | aiaiai-decode-rfc-2047
+}
+
+# Fetch all occurrences of header "$1" from the first e-mail in the mbox file
+# Usage: fetch_header <header_name> < <mbox_file>
+fetch_all_headers()
+{
+	local hdr="$1"
+
+	program_required "formail" ""
+
+	# Take every occurrence of the header. This will only take occurrences
+	# from the first of a combined mbox.
+	formail -z -c -x "$hdr:" | aiaiai-decode-rfc-2047
 }
 
 # Similar to fetch_header, but exits with code 1 if the header hasn't been
