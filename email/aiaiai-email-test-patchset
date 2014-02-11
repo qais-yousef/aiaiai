@@ -269,8 +269,13 @@ id="$(fetch_header "X-Aiaiai-Cover-Letter-Message-Id" < "$mbox")"
 [ -n "$id" ] || fetch_header_or_die id "Message-Id" < "$mbox"
 
 fetch_header_or_die from "From" < "$mbox"
-to="$(fetch_header "To" < "$mbox")"
-cc="$(fetch_header "Cc" < "$mbox")"
+
+to="$(fetch_all_headers "To" < "$mbox")"
+cc="$(fetch_all_headers "Cc" < "$mbox")"
+# If there are multiple "To:" or "Cc:" headers in the first patch, we need to
+# merge them into a single comma-separated list of addresses.
+to="$(merge_addresses "$to")"
+cc="$(merge_addresses "$cc")"
 
 # Either "To:" or "Cc:" must exist
 if [ -z "$to" ] && [ -z "$cc" ]; then
