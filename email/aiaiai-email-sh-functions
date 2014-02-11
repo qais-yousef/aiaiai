@@ -8,6 +8,9 @@
 . shell-ini-config
 . shell-quote
 
+__br="
+"
+
 if [ -z "${__included_aiaiai_email_sh_functions-}" ]; then
 __included_aiaiai_email_sh_functions=1
 
@@ -100,16 +103,22 @@ fetch_project_name()
 	printf "%s" "$list" | LC_ALL=C sed -n -e "s/.*$l+\([^@]\+\)@$d.*/\1/p" | head -n1
 }
 
-# Merge e-mail addresses into a comma-separated list
-# Usage: merge_addresses "addr1" "addr2"
+# Merge e-mail addresses into a comma-separated list. This function may have
+# any number of arguments. Each input argument is allowed to contain multiple
+# lines of comma separated e-mail addresses. This function will merge them all
+# into a single line of comma separated e-mail addresses.
+# Usage: merge_addresses "addr1" .. "addrN"
 merge_addresses()
 {
-	local addr1="$1"; shift
-	local addr2="$1"; shift
-	local list="$(printf "%s" "$addr1,$addr2" | LC_ALL=C tr -d "\n")"
+	local list
 
-	printf "%s" "$list" | LC_ALL=C sed -e "s/,,/,/g" -e "s/^,//" \
-		                           -e "s/,$//" -e "s/[[:blank:]]\+/ /g"
+	# We set IFS inside the subshell to be a newline, so that expansion of
+	# $* will properly add blank lines. This enables the trim to replace
+	# newlines with commas.
+	list="$(IFS="${__br}" printf "%s" "$*" | LC_ALL=C tr "\n" ",")"
+
+	printf "%s" "$list" | LC_ALL=C sed -e "s/,\+/,/g" -e "s/^,\+//" \
+		                           -e "s/,\+$//" -e "s/[[:blank:]]\+/ /g"
 }
 
 # A helper function for 'ini_config_get()' (from libshell) which fails when
@@ -203,13 +212,9 @@ compose_email()
 	local in_reply_to="$1"; shift
 
 	if [ -n "$cc" ]; then
-		# A newline characters
-		local __newline="
-"
-
 		cc="$(LC_ALL=C; printf "%s" "$cc" | tr "," "\n" | \
 				sed -e "/^$/d" -e "s/^/Cc: /g")"
-		cc="$__newline$cc"
+		cc="$__br$cc"
 	fi
 
 	cat <<EOF
