@@ -320,8 +320,8 @@ if [ -z "$pcfg_name" ]; then
 fi
 
 # Create the Cc list for replies that we'll be sending
-if [ "$pcfg_reply_to_all" != "1" ]; then
-	# Replies all the patch recipients will be CCed
+if [ "$pcfg_reply_to_all" = "1" ]; then
+	# All the patch recipients will be CCed
 	reply_cc="$(merge_addresses "$to" "$cc")"
 	reply_cc="$(merge_addresses "$reply_cc" "$pcfg_always_cc")"
 	reply_cc=$(strip_address "$reply_cc" "$cfg_ownmail")
