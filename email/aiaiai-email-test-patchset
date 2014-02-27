@@ -44,6 +44,7 @@ Options:
       --test-mode        test mode - work as usually, but do not actually
                          send replies;
       --bisectability    test bisectability;
+      --targets          list of make targets to build (defaults to all);
       --sparse           check with sparse while building;
       --smatch           check with smatch while building;
       --cppcheck         check with cppcheck;
@@ -186,7 +187,7 @@ $(cat -- $tmpdir/test-patchset.log)
 EOF
 }
 
-TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long test-mode,input:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long test-mode,input:,confdir:,preserve,bisectability,targets,sparse,smatch,cppcheck,coccinelle,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -194,6 +195,7 @@ mbox=
 confdir=
 test_mode=
 bisectability=
+targets="all"
 sparse=
 smatch=
 cppcheck=
@@ -217,6 +219,10 @@ while true; do
 		;;
 	--bisectability)
 		bisectability="--bisectability"
+		;;
+	--targets)
+		targets="$2"
+		shift
 		;;
 	--sparse)
 		sparse="--sparse"
@@ -338,7 +344,7 @@ fi
 # Test the path (or patch-set)
 verbose "Test configs \"$pcfg_configs\" branch \"$pcfg_branch\" of \"$pcfg_path\""
 aiaiai-test-patchset $verbose $preserve \
-	$bisectability $sparse $smatch $cppcheck $coccinelle \
+	$bisectability ${targets:--targets "$targets"} $sparse $smatch $cppcheck $coccinelle \
 	-i "$mbox" -j "$cfg_jobs" -c "$pcfg_branch" -w "$tmpdir" \
 	${confdir:+-C "$confdir"} \
 	${pcfg_unwanted_keywords:+-K "$pcfg_unwanted_keywords"} -- \
