@@ -15,12 +15,6 @@ implementing them.
     everythig via options. E.g., would could run
     'aiaia-test-patchset --config <path>/aiaiai.cfg' and have all the
     details defined in 'aiaiai.cfg'.
-  * Additional item for the previous one: aiaiai-email-dispatcher is too
-    difficutl to execute because it requires the "<validator>" argument.
-    But there is only one validator which makes sense in Aiaiai context
-    - "aiaiai-email-test-patchset". So remove the silly argument and
-    just run the validator, without exposing unnecessary complexity to
-    the user.
   * Start assigning versions to the scripts and do official releases, with
     signed tags, and tarballs.
   * Provide packages for various distributions. Including packages for the

@@ -26,17 +26,19 @@ fi
 show_usage()
 {
 	cat <<-EOF
-Usage: $PROG [options] <queuedir> <validator>
+Usage: $PROG [options] <queuedir> <cfgfile.ini>
 
 This program dispatches the incoming queue of patches in the <queuedir>
-directory and runs the <validator> program for each patch (or patch series).
-Patches are supposed to be in mbox format.
+directory and runs the aiaiai-email-test-patchset program for each patch (or
+patch series). Patches are supposed to be in mbox format. <cfgfile.ini> is used
+for general configuration of aiaiai-email-test-patchset.
 
 <queuedir>         - the directory containing the queue of patches
-<validator>        - the validation command.
+<cfgfile.ini>      - aiaiai-email-test-patchset's configuration file
 
 Options:
-  -J, --bigjobs=N    how many validators can be run at the same time (default 1);
+  -J, --bigjobs=N    how many patches (or patch series) can be checked
+                     at the same time (default 1);
   -v, --verbose      be verbose;
   -h, --help         show this text and exit.
 EOF
@@ -129,7 +131,7 @@ program_required "inotifywait" ""
 
 mkdir $verbose -p -- "$1" 1>&2
 queuedir="$(readlink -fv -- "$1")"; shift
-validator="$1"; shift
+cfgfile="$1"; shift
 
 in_fifo="$(mktemp -dt "$PROG.in_fifo.XXXX")"
 tmpdir="$(mktemp -dt "$PROG.tmpdir.XXXX")"
@@ -142,10 +144,10 @@ mkfifo -- "$fifo"
 # -P option of xargs provides us the parallelism.
 #
 # We execute the below command as a separate process - it will run the
-# validator for every file name read from the fifo.
+# aiaiai-email-test-patchset for every file name read from the fifo.
 tail -f -- "$fifo" | xargs -I{} -P"$bigjobs" -- \
 	aiaiai-email-dispatcher-helper $verbose -- "$in_fifo/{}" "$tmpdir/STOP" \
-				      "$queuedir" "$validator" >&2 &
+				      "$queuedir" "$cfgfile" >&2 &
 
 # Loop forever, wait for new files in the queue directory using inotify and
 # validate them
