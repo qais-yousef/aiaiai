@@ -190,7 +190,7 @@ test_configuration()
 	aiaiai-make-kernel $verbose $sparse $smatch $cppcheck $coccinelle -o "$obj1" \
 		--check-only "$mod_files" -j "$jobs" $arch_opt -D "$defconfig" \
 		-O "$log1.stdout.log" -E "$log1.stderr.log" --keep-going \
-		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel1" $targets
+		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel1" "$targets"
 
 	verbose "Done with non-patched kernel"
 
@@ -212,7 +212,7 @@ test_configuration()
 	aiaiai-make-kernel $verbose $sparse $smatch $cppcheck $coccinelle -o "$obj2" \
 		--check-only "$mod_files" -j "$jobs" $arch_opt -D "$defconfig" \
 		-O "$log2.stdout.log" -E "$log2.stderr.log" \
-		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel2" $targets
+		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel2" "$targets"
 
 	verbose "Done with patched kernel"
 
