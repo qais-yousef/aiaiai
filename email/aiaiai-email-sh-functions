@@ -169,15 +169,47 @@ parse_config()
 	cfg_ownmail_domain="$(printf "%s" "$cfg_ownmail" | LC_ALL=C sed "s/.*@//g")"
 }
 
+# Parse the "defaults" section of the config file. The result is a set of
+# per-option variables and their values are exactly as in the configuration
+# file:
+#
+# __dcfg_configs, __dcfg_branch, __dcfg_always_cc, __dcfg_reply_to_all,
+# __dcfg_accept_notify, __dcfg_unwanted_keywords, __dcfg_kmake_opts
+#
+# It is expected that this is used internally by the parse_prj_config and
+# should not normally be called outside of this file.
+#
+# Usage: _parse_defaults_config <cfgfile>
+__parse_default_config()
+{
+	local cfgfile="$1"; shift
+
+	__dcfg_configs="$(ini_config_get "$cfgfile" "defaults" "configs")"
+	__dcfg_branch="$(ini_config_get "$cfgfile" "defaults" "branch")"
+	__dcfg_always_cc="$(ini_config_get "$cfgfile" "defaults" "always_cc")"
+	__dcfg_reply_to_all="$(ini_config_get "$cfgfile" "defaults" "reply_to_all")"
+	__dcfg_accept_notify="$(ini_config_get "$cfgfile" "defaults" "accept_notify")"
+	__dcfg_unwanted_keywords="$(ini_config_get "$cfgfile" "defaults" "unwanted_keywords")"
+	__dcfg_kmake_opts="$(ini_config_get "$cfgfile" "defaults" "kmake_opts")"
+}
+
 # Similar to "parse_config", but parses a project configuration section. If the
 # project is found, the following variables are defined:
 #
-# cfg_name. pcfg_description, pcfg_path, pcfg_configs, pcfg_branch,
-# pcfg_reply_to_all, pcfg_accept_notify, pcfg_always_cc,
-# pcfg_unwanted_keywords, and pcfg_kmake_opts.
+# pcfg_name, pcfg_description, and pcfg_path.
+#
+# The following variables are defined, but receive default values from the
+# [defaults] section, if they are not specified in the project section:
+#
+# pcfg_configs, pcfg_branch, pcfg_reply_to_all, pcfg_accept_notify,
+# pcfg_always_cc, pcfg_unwanted_keywords, and pcfg_kmake_opts.
 #
 # If the project is not found, this function only defined an empty "pcfg_name"
 # variable.
+#
+# Note, this function implicitly uses _parse_defaults_config to grab the
+# default configurations, and if the variable is not defined in the project
+# section, it will use the default value.
 #
 # Usage: parse_prj_config <cfgfile> <prj>
 parse_prj_config()
@@ -190,14 +222,29 @@ parse_prj_config()
 
 	ini_config_get_or_die pcfg_description   "$cfgfile" "prj_$prj" "description"
 	ini_config_get_or_die pcfg_path          "$cfgfile" "prj_$prj" "path"
-	ini_config_get_or_die pcfg_configs       "$cfgfile" "prj_$prj" "configs"
-	ini_config_get_or_die pcfg_branch        "$cfgfile" "prj_$prj" "branch"
-	ini_config_get_or_die pcfg_reply_to_all  "$cfgfile" "prj_$prj" "reply_to_all"
-	ini_config_get_or_die pcfg_accept_notify "$cfgfile" "prj_$prj" "accept_notify"
 
+	# The following options all take default value from the "defaults"
+	# section, and hence "override" those settings. First we need to populate those.
+	_parse_default_config "$cfgfile"
+
+	# ini_config_is_set is important here, so that defining a value as
+	# empty in the project section actually does define it as empty, rather
+	# than using the default. This allows defaults to only be used if the
+	# project config does not specify anything.
+	pcfg_configs="$(ini_config_get "$cfgfile" "prj_$prj" "configs")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "configs" || pcfg_configs="$__dcfg_configs"
+	pcfg_branch="$(ini_config_get "$cfgfile" "prj_$prj" "branch")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "branch" || pcfg_branch="$__dcfg_branch"
+	pcfg_reply_to_all="$(ini_config_get "$cfgfile" "prj_$prj" "reply_to_all")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "reply_to_all" || pcfg_reply_to_all="$__dcfg_reply_to_all"
+	pcfg_accept_notify="$(ini_config_get "$cfgfile" "prj_$prj" "accept_notify")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "accept_notify" || pcfg_accept_notify="$__dcfg_accept_notify"
 	pcfg_always_cc="$(ini_config_get "$cfgfile" "prj_$prj" "always_cc")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "always_cc" || pcfg_always_cc="$__dcfg_always_cc"
 	pcfg_unwanted_keywords="$(ini_config_get "$cfgfile" "prj_$prj" "unwanted_keywords")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "unwanted_keywords" || pcfg_unwanted_keywords="$__dcfg_unwanted_keywords"
 	pcfg_kmake_opts="$(ini_config_get "$cfgfile" "prj_$prj" "kmake_opts")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "kmake_opts" || pcfg_kmake_opts="$__dcfg_kmake_opts"
 }
 
 # Compose (but not send) e-mail reply. This function assumes that the following
