@@ -195,7 +195,7 @@ parse_prj_config()
 	ini_config_get_or_die pcfg_accept_notify "$cfgfile" "prj_$prj" "accept_notify"
 
 	pcfg_always_cc="$(ini_config_get "$cfgfile" "prj_$prj" "always_cc")"
-	pcfg_unwanted_keywords="$(ini_config_get "$cfgfile" ""prj_$prj"" "unwanted_keywords")"
+	pcfg_unwanted_keywords="$(ini_config_get "$cfgfile" "prj_$prj" "unwanted_keywords")"
 	pcfg_kmake_opts="$(ini_config_get "$cfgfile" "prj_$prj" "kmake_opts")"
 }
 
