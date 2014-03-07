@@ -139,7 +139,7 @@ ini_config_get_or_die()
 # file:
 #
 # cfg_ownname, cfg_ownmail, cfg_adminname, cfg_adminmail, cfg_workdir,
-# cfg_jobs, cfg_preamble, cfg_signature, cfg_built_preamble
+# cfg_max_validators, cfg_jobs, cfg_preamble, cfg_signature, cfg_built_preamble
 #
 # Additionally, the following variables are set:
 #  o cfg_ownmail_local - the local portion of the ownmail address
@@ -156,6 +156,7 @@ parse_config()
 	ini_config_get_or_die cfg_adminmail      "$cfgfile" "global" "adminmail"
 	ini_config_get_or_die cfg_adminname      "$cfgfile" "global" "adminname"
 	ini_config_get_or_die cfg_workdir        "$cfgfile" "global" "workdir"
+	ini_config_get_or_die cfg_max_validators "$cfgfile" "global" "max_validators"
 	ini_config_get_or_die cfg_jobs           "$cfgfile" "global" "jobs"
 	ini_config_get_or_die cfg_preamble       "$cfgfile" "global" "preamble"
 	ini_config_get_or_die cfg_signature      "$cfgfile" "global" "signature"

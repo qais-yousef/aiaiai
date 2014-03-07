@@ -12,6 +12,7 @@ echo $PATH
 . shell-args
 . shell-signal
 . aiaiai-sh-functions
+. aiaiai-email-sh-functions
 
 PROG="${0##*/}"
 message_time="yes"
@@ -37,8 +38,6 @@ for general configuration of aiaiai-email-test-patchset.
 <cfgfile.ini>      - aiaiai-email-test-patchset's configuration file
 
 Options:
-  -J, --bigjobs=N    how many patches (or patch series) can be checked
-                     at the same time (default 1);
   -v, --verbose      be verbose;
   -h, --help         show this text and exit.
 EOF
@@ -97,18 +96,12 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o J:,v,h --long bigjobs:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o J:,v,h --long verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
-bigjobs=1
-
 while true; do
 	case "$1" in
-	-J|--bigjobs)
-		bigjobs="$(opt_check_number "$1" "$2")"
-		shift
-		;;
 	-v|--verbose) verbose="--verbose"
 		;;
 	-h|--help)
@@ -133,6 +126,8 @@ mkdir $verbose -p -- "$1" 1>&2
 queuedir="$(readlink -fv -- "$1")"; shift
 cfgfile="$1"; shift
 
+parse_config "$cfgfile"
+
 in_fifo="$(mktemp -dt "$PROG.in_fifo.XXXX")"
 tmpdir="$(mktemp -dt "$PROG.tmpdir.XXXX")"
 
@@ -145,7 +140,7 @@ mkfifo -- "$fifo"
 #
 # We execute the below command as a separate process - it will run the
 # aiaiai-email-test-patchset for every file name read from the fifo.
-tail -f -- "$fifo" | xargs -I{} -P"$bigjobs" -- \
+tail -f -- "$fifo" | xargs -I{} -P"$cfg_max_validators" -- \
 	aiaiai-email-dispatcher-helper $verbose -- "$in_fifo/{}" "$tmpdir/STOP" \
 				      "$queuedir" "$cfgfile" >&2 &
 
