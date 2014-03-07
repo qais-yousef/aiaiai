@@ -10,12 +10,6 @@ implementing them.
     containing the text for end-users to refer instead. Just like
     email.preamble refers the file, which contains the preamble. This is more
     flexible and consistent.
-  * Move command-line options of 'aiaiai-email-*' scripts to the configuration
-    file. This should make it simpler for users to configure the whole thing
-    when all the knobs are in one place. Just make each script to parse the
-    config file and pick own configuration from there. Namely, most of
-    the 'aiaiai-email-dispatcher', 'aiaiai-email-testpatchset', and
-    'aiaiai-email-lda' options have to go away.
   * Eventually make non-email scripts (aiaiai-test-patchset) also
     support the config file. This could be an alternative to specifying
     everythig via options. E.g., would could run

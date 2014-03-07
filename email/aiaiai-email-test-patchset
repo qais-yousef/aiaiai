@@ -35,20 +35,9 @@ The mbox file containing the patches to test is expected to come from stdin
 
 Options:
   -i, --input=MBOX       use the MBOX file instead of stdin;
-  -C, --confdir=CDIR     path to the directory containing the defconfig files
-                         (those you specify in the config file); by default the
-                         defconfig files are assumed to be part of the
-                         <kernel-tree>; this option makes it possible to use
-                         stand-alone defconfig files instead;
   -p, --preserve         preserve all the temporary files - do not clean up;
       --test-mode        test mode - work as usually, but do not actually
                          send replies;
-      --bisectability    test bisectability;
-      --targets          list of make targets to build (defaults to all);
-      --sparse           check with sparse while building;
-      --smatch           check with smatch while building;
-      --cppcheck         check with cppcheck;
-      --coccinelle       check with coccinelle;
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
 EOF
@@ -187,19 +176,12 @@ $(cat -- $tmpdir/test-patchset.log)
 EOF
 }
 
-TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long test-mode,input:,confdir:,preserve,bisectability,targets,sparse,smatch,cppcheck,coccinelle,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long test-mode,input:,preserve,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
 mbox=
-confdir=
 test_mode=
-bisectability=
-targets="all"
-sparse=
-smatch=
-cppcheck=
-coccinelle=
 
 while true; do
 	case "$1" in
@@ -207,34 +189,11 @@ while true; do
 		mbox="$(opt_check_read "$1" "$2")"
 		shift
 		;;
-	-C|--confdir)
-		confdir="$(opt_check_dir "$1" "$2")"
-		shift
-		;;
 	-p|--preserve)
 		preserve="--preserve"
 		;;
 	--test-mode)
 		test_mode=y
-		;;
-	--bisectability)
-		bisectability="--bisectability"
-		;;
-	--targets)
-		targets="$2"
-		shift
-		;;
-	--sparse)
-		sparse="--sparse"
-		;;
-	--smatch)
-		smatch="--smatch"
-		;;
-	--cppcheck)
-		cppcheck="--cppcheck"
-		;;
-	--coccinelle)
-		coccinelle="--coccinelle"
 		;;
 	-v|--verbose) verbose=-v
 		;;
@@ -325,6 +284,17 @@ if [ -z "$pcfg_name" ]; then
 	error_project_not_found
 fi
 
+bisectability=
+sparse=
+smatch=
+cppcheck=
+coccinelle=
+[ "$pcfg_bisectability" != "1" ] || bisectablity="--bisectability"
+[ "$pcfg_sparse" != "1" ] || sparse="--sparse"
+[ "$pcfg_smatch" != "1" ] || smatch="--smatch"
+[ "$pcfg_cppcheck" != "1" ] || cppcheck="--cppcheck"
+[ "$pcfg_coccinelle" != "1" ] || coccinelle="--coccinelle"
+
 # Create the Cc list for replies that we'll be sending
 if [ "$pcfg_reply_to_all" = "1" ]; then
 	# All the patch recipients will be CCed
@@ -343,9 +313,9 @@ fi
 # Test the path (or patch-set)
 verbose "Test configs \"$pcfg_configs\" branch \"$pcfg_branch\" of \"$pcfg_path\""
 aiaiai-test-patchset $verbose $preserve \
-	$bisectability ${targets:--targets "$targets"} $sparse $smatch $cppcheck $coccinelle \
+	${pcfg_targets:--targets "$pcfg_targets"} $bisectability $sparse $smatch $cppcheck $coccinelle \
 	-i "$mbox" -j "$cfg_jobs" -c "$pcfg_branch" -w "$tmpdir" \
-	${confdir:+-C "$confdir"} \
+	${pcfg_defconfigdir:+-C "$pcfg_defconfigdir"} \
 	${pcfg_unwanted_keywords:+-K "$pcfg_unwanted_keywords"} -- \
 	${pcfg_kmake_opts:+-M "$pcfg_kmake_opts"} \
 	"$pcfg_path" "$pcfg_configs" > "$tmpdir/test-patchset.log" ||
