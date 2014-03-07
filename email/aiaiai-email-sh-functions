@@ -139,11 +139,12 @@ ini_config_get_or_die()
 # file:
 #
 # cfg_ownname, cfg_ownmail, cfg_adminname, cfg_adminmail, cfg_workdir,
-# cfg_jobs, cfg_signature, cfg_built_preamble.
+# cfg_jobs, cfg_preamble, cfg_signature, cfg_built_preamble
 #
-# Additinally, the following variables are defined:
-#   o cfg_preamble - contains the email preamble read from the file definded
-#     in email.preamble variable
+# Additionally, the following variables are set:
+#  o cfg_ownmail_local - the local portion of the ownmail address
+#  o cfg_ownmail_domain - the domain portion of the ownmail address
+#  o cfg_preamble - the contents of the file pointed to by the preamble file
 #
 # Usage: parse_config <cfgfile>
 parse_config()
@@ -156,10 +157,11 @@ parse_config()
 	ini_config_get_or_die cfg_adminname      "$cfgfile" "global" "adminname"
 	ini_config_get_or_die cfg_workdir        "$cfgfile" "global" "workdir"
 	ini_config_get_or_die cfg_jobs           "$cfgfile" "global" "jobs"
-	ini_config_get_or_die cfg_signature      "$cfgfile" "global" "signature"
 	ini_config_get_or_die cfg_preamble       "$cfgfile" "global" "preamble"
+	ini_config_get_or_die cfg_signature      "$cfgfile" "global" "signature"
 	ini_config_get_or_die cfg_built_preamble "$cfgfile" "global" "built_preamble"
 
+	# Get the contents of the preamble file
 	cfg_preamble="$(cat "$cfg_preamble")"
 
 	# Get the local and domain parts of own e-mail address
