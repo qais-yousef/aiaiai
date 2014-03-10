@@ -139,7 +139,8 @@ ini_config_get_or_die()
 # file:
 #
 # cfg_ownname, cfg_ownmail, cfg_adminname, cfg_adminmail, cfg_workdir,
-# cfg_max_validators, cfg_jobs, cfg_preamble, cfg_signature, cfg_built_preamble
+# cfg_max_validators, cfg_jobs, cfg_preamble, cfg_signature,
+# cfg_built_preamble, cfg_disable_notifications, cfg_preserve_files
 #
 # Additionally, the following variables are set:
 #  o cfg_ownmail_local - the local portion of the ownmail address
@@ -161,6 +162,10 @@ parse_config()
 	ini_config_get_or_die cfg_preamble       "$cfgfile" "global" "preamble"
 	ini_config_get_or_die cfg_signature      "$cfgfile" "global" "signature"
 	ini_config_get_or_die cfg_built_preamble "$cfgfile" "global" "built_preamble"
+
+	# Debug options
+	cfg_disable_notifications="$(ini_config_get "$cfgfile" "debug" "disable_notifications")"
+	cfg_preserve_files="$(ini_config_get "$cfgfile" "debug" "preserve_files")"
 
 	# Get the contents of the preamble file
 	cfg_preamble="$(cat "$cfg_preamble")"
@@ -237,7 +242,7 @@ parse_prj_config()
 
 	# The following options all take default value from the "defaults"
 	# section, and hence "override" those settings. First we need to populate those.
-	_parse_default_config "$cfgfile"
+	__parse_default_config "$cfgfile"
 
 	# ini_config_is_set is important here, so that defining a value as
 	# empty in the project section actually does define it as empty, rather

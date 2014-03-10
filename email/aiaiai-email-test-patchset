@@ -35,9 +35,6 @@ The mbox file containing the patches to test is expected to come from stdin
 
 Options:
   -i, --input=MBOX       use the MBOX file instead of stdin;
-  -p, --preserve         preserve all the temporary files - do not clean up;
-      --test-mode        test mode - work as usually, but do not actually
-                         send replies;
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
 EOF
@@ -50,7 +47,6 @@ fail_usage()
 	exit 1
 }
 
-preserve=
 verbose=
 mbox=
 tmpdir=
@@ -58,7 +54,7 @@ cleanup_handler()
 {
 	rm $verbose -rf -- "$mbox" >&2
 
-	if [ -n "$preserve" ]; then
+	if [ "$cfg_preserve_files" = "1" ]; then
 		verbose "Preserved tmpdir: $tmpdir"
 	else
 		[ -z "$tmpdir" ] || verbose "Removing $tmpdir";
@@ -91,10 +87,10 @@ send_email()
 
 	[ -z "$verbose" ] || cat -- "$tmpdir/mail" >&2
 
-	if [ -z "$test_mode" ]; then
+	if [ "$cfg_disable_notifications" != "1" ]; then
 		mutt -x -H "$tmpdir/mail" </dev/null
 	else
-		verbose "Do not actually send the email - we are in test mode"
+		verbose "Email nofications have been disabled in the configuration file"
 	fi
 }
 
@@ -176,24 +172,17 @@ $(cat -- $tmpdir/test-patchset.log)
 EOF
 }
 
-TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long test-mode,input:,preserve,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long input:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
 mbox=
-test_mode=
 
 while true; do
 	case "$1" in
 	-i|--input)
 		mbox="$(opt_check_read "$1" "$2")"
 		shift
-		;;
-	-p|--preserve)
-		preserve="--preserve"
-		;;
-	--test-mode)
-		test_mode=y
 		;;
 	-v|--verbose) verbose=-v
 		;;
@@ -312,7 +301,7 @@ fi
 
 # Test the path (or patch-set)
 verbose "Test configs \"$pcfg_configs\" branch \"$pcfg_branch\" of \"$pcfg_path\""
-aiaiai-test-patchset $verbose $preserve \
+aiaiai-test-patchset $verbose ${cfg_preserve_files:+--preserve} \
 	${pcfg_targets:+--targets "$pcfg_targets"} $bisectability $sparse $smatch $cppcheck $coccinelle \
 	-i "$mbox" -j "$cfg_jobs" -c "$pcfg_branch" -w "$tmpdir" \
 	${pcfg_defconfigdir:+-C "$pcfg_defconfigdir"} \
