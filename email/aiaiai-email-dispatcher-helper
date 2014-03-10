@@ -98,7 +98,7 @@ verbose "Configuration file: $cfgfile"
 mv $verbose -- "$mbox" "$tmpdir" >&2
 file="$tmpdir/${mbox##*/}"
 
-if ! cat -- "$file" | aiaia-email-test-patchset "$verbose" "$cfgfile"; then
+if ! cat -- "$file" | aiaiai-email-test-patchset "$verbose" "$cfgfile"; then
 	verbose "Validation failed"
 	touch -- "$fail_file"
 	mv $verbose -- "$file" "$queuedir" >&2
