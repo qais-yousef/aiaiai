@@ -239,7 +239,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,Q:,K:,M:,v,h --long jobs:,commit-id:,input:,workdir:,logdir:,confdir:,preserve,bisectability,targets,sparse,smatch,cppcheck,coccinelle,quick-fixes:,keywords:,kmake-opts:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,Q:,K:,M:,v,h --long jobs:,commit-id:,input:,workdir:,logdir:,confdir:,preserve,bisectability,targets:,sparse,smatch,cppcheck,coccinelle,quick-fixes:,keywords:,kmake-opts:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
