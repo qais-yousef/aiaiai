@@ -316,8 +316,8 @@ aiaiai-test-patchset $verbose $preserve \
 	${pcfg_targets:+--targets "$pcfg_targets"} $bisectability $sparse $smatch $cppcheck $coccinelle \
 	-i "$mbox" -j "$cfg_jobs" -c "$pcfg_branch" -w "$tmpdir" \
 	${pcfg_defconfigdir:+-C "$pcfg_defconfigdir"} \
-	${pcfg_unwanted_keywords:+-K "$pcfg_unwanted_keywords"} -- \
-	${pcfg_kmake_opts:+-M "$pcfg_kmake_opts"} \
+	${pcfg_unwanted_keywords:+-K "$pcfg_unwanted_keywords"} \
+	${pcfg_kmake_opts:+-M "$pcfg_kmake_opts"} -- \
 	"$pcfg_path" "$pcfg_configs" > "$tmpdir/test-patchset.log" ||
 {
 	verbose "aiaiai-test-patchset failed"
