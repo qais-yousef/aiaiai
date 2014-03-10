@@ -313,7 +313,7 @@ fi
 # Test the path (or patch-set)
 verbose "Test configs \"$pcfg_configs\" branch \"$pcfg_branch\" of \"$pcfg_path\""
 aiaiai-test-patchset $verbose $preserve \
-	${pcfg_targets:--targets "$pcfg_targets"} $bisectability $sparse $smatch $cppcheck $coccinelle \
+	${pcfg_targets:+--targets "$pcfg_targets"} $bisectability $sparse $smatch $cppcheck $coccinelle \
 	-i "$mbox" -j "$cfg_jobs" -c "$pcfg_branch" -w "$tmpdir" \
 	${pcfg_defconfigdir:+-C "$pcfg_defconfigdir"} \
 	${pcfg_unwanted_keywords:+-K "$pcfg_unwanted_keywords"} -- \
