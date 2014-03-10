@@ -205,7 +205,8 @@ program_required "grep" ""
 program_required "sed" ""
 program_required "formail" ""
 
-cfgfile="$1"; shift
+cfgfile="$(readlink -fv -- "$1")"; shift
+parse_config "$cfgfile"
 
 # Save the mbox to a temporary file if it comes from stdin
 if [ -z "$mbox" ]; then
@@ -239,8 +240,6 @@ fi
 printf "\n"
 verbose "Testing mbox: \"$from: $subj (Message-Id: $id)\""
 verbose "parsing config file \"$cfgfile\""
-
-parse_config "$cfgfile"
 
 mkdir $verbose -p -- "$cfg_workdir" >&2
 
