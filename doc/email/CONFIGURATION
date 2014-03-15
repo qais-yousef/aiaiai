@@ -156,3 +156,34 @@ specified for each project.
     to make this a bare remote or a local tree. Generally, aiaiai works best if
     the tree is locally stored on the same machine as the aiaiai process.
 
+2.4 Aiaiai Hooks
+~~~~~~~~~~~~~~~~
+
+The [hooks] section can be used to specify scripts which are called by various
+aiaiai tools, and can be used to customize the behavior of aiaiai. This is
+generally done by modifying the mbox to include custom headers, which are
+detailed below.
+
+The two following headers are generally inserted by aiaiai-email-lda and most
+likely don't need to be inserted by a hook, but are included here for
+completeness.
+
+* X-Aiaiai-Cover-Letter-Subject
+    This is the subject of the 0/n email if one is given when sending a patch
+    series.
+* X-Aiaiai-Cover-Letter-Message-Id
+    This is the message Id of the 0/n email if one was given when sending a
+    patch series.
+
+The above two settings are used by aiaiai-email-test-patchset so that it can
+formulate a reply to the 0/n email instead of replying to the 1/n email of a
+patch series. This helps indicate that the entire patch series was validated,
+instead of appearing as though only the first patch was tested.
+
+2.4.1 Dispatcher Hook
+~~~~~~~~~~~~~~~~~~~~~
+
+The dispatcher hook is called by aiaiai-email-dispatcher-helper, and receives
+the mbox file as its first argument, and the cfgfile as its second argument. It
+should modify the mbox file inplace, to include any custom headers specified
+above.

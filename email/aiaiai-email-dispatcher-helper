@@ -90,7 +90,17 @@ fail_file="$1"; shift
 queuedir="$(readlink -fv -- "$1")"; shift
 cfgfile="$1"; shift
 
+# Parse the configuration file
+parse_config "$cfgfile"
+
 tmpdir="$(mktemp -dt "$PROG.XXXX")"
+
+# Run the dispatcher hook
+if [ -n "$cfg_dispatch_hook" ]; then
+	hook="$(readlink -fv -- "$cfg_dispatch_hook")"
+	verbose "Running \"$hook\" on \"$mbox\""
+	$hook "$mbox" "$cfgfile"
+fi
 
 verbose "Validating \"$mbox\", queue directory is: $queuedir"
 verbose "Configuration file: $cfgfile"

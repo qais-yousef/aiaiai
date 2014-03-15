@@ -163,6 +163,9 @@ parse_config()
 	ini_config_get_or_die cfg_signature      "$cfgfile" "global" "signature"
 	ini_config_get_or_die cfg_built_preamble "$cfgfile" "global" "built_preamble"
 
+	# Hooks which can be used to enable custom behavior
+	cfg_dispatch_hook="$(ini_config_get "$cfgfile" "hooks" "dispatcher")"
+
 	# Debug options
 	cfg_disable_notifications="$(ini_config_get "$cfgfile" "debug" "disable_notifications")"
 	cfg_preserve_files="$(ini_config_get "$cfgfile" "debug" "preserve_files")"
