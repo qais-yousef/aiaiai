@@ -217,24 +217,11 @@ queue_series()
 		# later.
 		local subj="$(fetch_header "Subject" < "$dir/0")"
 		subj="X-Aiaiai-Cover-Letter-Subject: $subj"
+		insert_header "$mbox" "$subj"
 
 		local id="$(fetch_header "Message-Id" < "$dir/0")"
 		id="X-Aiaiai-Cover-Letter-Message-Id: $id"
-
-		# The below trick allows us to avoid creating a separate
-		# temporary file: open the "$mbox" file, unlink, use the open
-		# file descriptor for reading and redirect the output to the
-		# new version of the "$mbox" file. We could instead use the
-		# "sponge" tool, though.
-		exec 3<$mbox
-		rm $verbose "$mbox" >&2
-		verbose "Adding \"$subj\""
-		formail -s formail -I "$subj" <&3 > "$mbox"
-
-		exec 3<$mbox
-		rm $verbose "$mbox" >&2
-		verbose "Adding \"$id\""
-		formail -s formail -I "$id" <&3 > "$mbox"
+		insert_header "$mbox" "$id"
 	fi
 	queue_mboxfile "$mbox" "$n"
 	rm $verbose -rf -- "$dir" >&2
