@@ -248,7 +248,8 @@ mv $verbose -- "$mbox" "$tmpdir/mbox" >&2
 mbox="$tmpdir/mbox"
 
 # Find out the project name
-prj="$(fetch_project_name "$to" "$cfg_ownmail")"
+prj="$(fetch_header "X-Aiaiai-Project" < "$mbox")"
+[ -n "$prj" ] || prj="$(fetch_project_name "$to" "$cfg_ownmail")"
 verbose "Project \"$prj\""
 
 # Replies will refer the first patch of the patch-set under test

@@ -180,6 +180,14 @@ formulate a reply to the 0/n email instead of replying to the 1/n email of a
 patch series. This helps indicate that the entire patch series was validated,
 instead of appearing as though only the first patch was tested.
 
+The following headers will be used if available, and may be helpful for hooks
+to set them, in order to help customize aiaiai.
+
+* X-Aiaiai-Project
+    This header tells aiaiai which project should be used. It overrides the
+    default +project from the email address, and could be set in a scenario
+    where the project is not specified by address.
+
 2.4.1 Dispatcher Hook
 ~~~~~~~~~~~~~~~~~~~~~
 
