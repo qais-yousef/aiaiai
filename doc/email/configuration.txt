@@ -90,11 +90,6 @@ additive.
     the kernel, or possibly inside the defconfigdir as specified by other
     option. Multiple configs are supported by seperating with spaces. Each
     config will be tested. See the example-aiaiai.cfg for details and examples.
-* branch
-    What git refspec to validate against. Usually this should be a remote
-    branch ie: origin/master, but can actually be any refspec. Note that the
-    defconfigs specified in the config option must actually be available from
-    the refspec.
 * always_cc
     A comma seperated list of addresses to always Cc when creating replies. For
     example, it could be a mailing list to which all aiaiai replies go.
@@ -155,6 +150,11 @@ specified for each project.
     also does not depend on the tree being (or not) bare, so you can feel free
     to make this a bare remote or a local tree. Generally, aiaiai works best if
     the tree is locally stored on the same machine as the aiaiai process.
+* branch
+    What git refspec to validate against. Usually this should be a remote
+    branch ie: origin/master, but can actually be any refspec. Note that the
+    defconfigs specified in the config option must actually be available from
+    the refspec.
 
 2.4 Aiaiai Hooks
 ~~~~~~~~~~~~~~~~
