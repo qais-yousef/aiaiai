@@ -160,42 +160,49 @@ specified for each project.
     patch-submitter visible mirror of the local path used internally. If not
     supplied, aiaiai will display the path instead.
 
-2.4 Aiaiai Hooks
+2.4 Hooks
+~~~~~~~~~
+
+The [hooks] section contains settings for various points where a hook can be
+run to customize the behavior of aiaiai. Generally, hooks should output
+mbox-style headers, which the aiaiai program will parse for required
+information. Only certain headers are supported, outlined below.
+
+A hook is expected to return zero for successful runs, 127 for patch rejection,
+and any other non zero value at run-time error. In addition, for a zero return
+status, the output should be a list of headers outlined below, (one per line)
+which will be parsed by aiaiai for customizing behavior. For 127 exit status,
+the stdout will be used for creating a subsequent response email, and it should
+contain information explaining to the user why the hook rejected the patch. For
+other non-zero exit status, the output is ignored.
+
+Hooks are passed the configuration file, and the mbox file for processing and
+therefor have full access to the configuration file. Discretion should be used
+if adding custom variables to the configuration file such that the hook won't
+have a namespace collission with regular aiaiai configuration options.
+
+The only currently supported hook is the email hook configured by setting
+hooks.email to the path of an executable script.
+
+2.4.1 Email Hook
 ~~~~~~~~~~~~~~~~
 
-The [hooks] section can be used to specify scripts which are called by various
-aiaiai tools, and can be used to customize the behavior of aiaiai. This is
-generally done by modifying the mbox to include custom headers, which are
-detailed below.
-
-The two following headers are generally inserted by aiaiai-email-lda and most
-likely don't need to be inserted by a hook, but are included here for
-completeness.
-
-* X-Aiaiai-Cover-Letter-Subject
-    This is the subject of the 0/n email if one is given when sending a patch
-    series.
-* X-Aiaiai-Cover-Letter-Message-Id
-    This is the message Id of the 0/n email if one was given when sending a
-    patch series.
-
-The above two settings are used by aiaiai-email-test-patchset so that it can
-formulate a reply to the 0/n email instead of replying to the 1/n email of a
-patch series. This helps indicate that the entire patch series was validated,
-instead of appearing as though only the first patch was tested.
-
-The following headers will be used if available, and may be helpful for hooks
-to set them, in order to help customize aiaiai.
+This hook is run from within aiaiai-email-test-patchset, and is run just prior
+to determining the project. This hook can be used to customize the behavior and
+settings of aiaiai-email-test-patchset. Primarily it can be used to implement
+any kind of patch-rejection scheme desired, as well as use the following
+headers to customize various aspects of aiaiai.
 
 * X-Aiaiai-Project
-    This header tells aiaiai which project should be used. It overrides the
-    default +project from the email address, and could be set in a scenario
-    where the project is not specified by address.
+    This header indicates to email-test-patchset which project the patch series
+    belongs to. This overrides the default +prj format from the cfg_ownmail
+    address. This can be used to implement any elaborate scheme desired for
+    determining the project, instead of relying on users mailing patches to the
+    correct email address.
 
-2.4.1 Dispatcher Hook
-~~~~~~~~~~~~~~~~~~~~~
+* X-Aiaiai-Commit
+    This header indicates what commit to test against instead of the default
+    refspec supplied by the project. It can be used to implement some form of
+    patch-version detection, or other setup. It likely should be used in tandem
+    with the X-Aiaiai-Project setting.
 
-The dispatcher hook is called by aiaiai-email-dispatcher-helper, and receives
-the mbox file as its first argument, and the cfgfile as its second argument. It
-should modify the mbox file inplace, to include any custom headers specified
-above.
