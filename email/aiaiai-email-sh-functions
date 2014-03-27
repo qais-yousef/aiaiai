@@ -134,6 +134,14 @@ ini_config_get_or_die()
 	eval "$var=\"\$result\""
 }
 
+# Get the list of projects from config file "$1".
+get_cfgfile_projects_list()
+{
+	local cfgfile="$1"
+
+	LC_ALL=C sed -n -e "s/^\[prj_\(.*\)\]$/\1/p" "$cfgfile"
+}
+
 # Parse the "global" section of the config file. The result is a set of
 # per-option variables and their values are exactly as in the configuration
 # file:

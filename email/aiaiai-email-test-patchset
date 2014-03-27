@@ -68,8 +68,8 @@ list_projects()
 {
 	local prj
 
-	LC_ALL=C sed -n -e "s/^\[prj_\(.*\)\]$/\1/p" "$cfgfile" | \
-	    while read -r prj; do
+	get_cfgfile_projects_list "$cfgfile" | \
+	while read -r prj; do
 		# Get project description
 		local descr
 		ini_config_get_or_die descr "$cfgfile" "prj_$prj" "description"
