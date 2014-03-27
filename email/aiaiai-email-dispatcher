@@ -4,8 +4,8 @@
 # Author: Artem Bityutskiy
 # License: GPLv2
 
-srcdir="$(readlink -ev -- ${0%/*}/..)"
-PATH="$srcdir/helpers:$srcdir/email:$srcdir/helpers/libshell:$PATH"
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir:$srcdir/..:$srcdir/../helpers:$srcdir/../helpers/libshell:$PATH"
 
 echo $PATH
 . shell-error
