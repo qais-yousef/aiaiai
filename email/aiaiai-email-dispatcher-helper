@@ -10,6 +10,7 @@ PATH="$srcdir:$srcdir/..:$srcdir/../helpers:$srcdir/../helpers/libshell:$PATH"
 . shell-error
 . shell-signal
 . aiaiai-sh-functions
+. aiaiai-email-sh-functions
 
 PROG="${0##*/}"
 message_time="yes"
