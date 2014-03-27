@@ -1,0 +1,159 @@
+#!/usr/bin/perl
+#
+# Find the most recent commit that a given mbox (*with* index information!) can
+# apply, assuming that our tree has the blobs available. Passes all options
+# directly to git-log, so you can shorten or filter what commits to check as
+# you desire, such as limiting how far back the check will run, and so on.
+use 5.016;
+use warnings;
+use strict;
+
+# subroutine to check whether two blob indexes match, (ie: one
+# contains the other regardless of which one is larger)
+sub match_index {
+    my ( $x, $y ) = @_;
+
+    my $lx = length $x;
+    my $ly = length $y;
+
+    # Find which length is shortest
+    my $l = $lx >= $ly ? $ly : $lx;
+
+    # Truncate the indexes to the shortest
+    my $tx = substr $lx,0,$l;
+    my $ty = substr $ly,0,$l;
+
+    # Return the match
+    return $tx == $ty;
+}
+
+# Slurp the contents into $mbox for processing
+my $mbox = do { local $/; <STDIN> };
+
+# Hash of file-index relations
+my %files = ();
+
+# Split mbox apart by diff lines, preserving the filename we matched against,
+# as well as the full index line. This should handle even the rename case from
+# git diff output. Note, we assume that mbox has correct ordering of patches.
+while ($mbox =~ /^diff --git [iwcoab]\/(?<oldfile>\S+) [iwcoab]\/(?<newfile>\S+)\n(?<new>new file mode [0-7]+\n)?(?<rename>^similarity index .*\n)?(?<from>^rename from \g{oldfile}\n)?(?<to>^rename to \g{newfile}\n)?(?<index>^index .*$)?\n/gm) {
+    my $file = $+{oldfile};
+    my $rename = $+{similarity};
+    my $new = $+{new};
+    my $index = $+{index};
+    $file or die "Could not parse file from diff context.";
+
+    # If we get a rename without an index, simply note that a file was renamed,
+    # and ignore it, since there were no real changes.
+    if ( $rename and not $index ) {
+        print STDERR "Found rename of $file\n";
+        next;
+    }
+
+    # Check the index line for proper formatting.
+    $index =~ /^index ([0-9a-f]+)[.]{2}([0-9a-f]+) [0-7]{6}$/;
+    my $initialshortblob = $1;
+    my $modifiedshortblob = $2;
+    $initialshortblob or die "Could not parse short blob index from diff context. Is the mbox corrupted?";
+
+    # If we have a new file, store the initial setting as "new", and keep the
+    # modified blob for checking future changes in this series.
+    if ($new) {
+        print STDERR "Found new file at $file\n";
+        $files{$file}{"initial"} = "new";
+        $files{$file}{"modified"} = $modifiedshortblob;
+        next;
+    };
+
+    # If we already have this file, simply update the modified blob index
+    if (exists $files{$file}) {
+        # Check if the blob matches the last known result of the file
+        if (match_index($initialshortblob, $files{$file}{"modified"})) {
+            print STDERR "Found further modification of $file from $initialshortblob to $modifiedshortblob\n";
+            $files{$file}{"modified"} = $modifiedshortblob;
+            next;
+        } else{
+            die "Found futher modification of $file that does not match expected index. Is the patch sequence out of order?";
+        }
+    }
+
+    print STDERR "Found $file modified from $initialshortblob to $modifiedshortblob\n";
+
+    # We have to process the short blob index into a full index value using
+    # git-rev-parse, otherwise the lookup will fail.
+    open my $rev_parse, '-|', 'git' => 'rev-parse' => '--verify', $initialshortblob
+        or die "Couldn't open pipe to git-rev-parse: ", $!;
+
+    my $initialblob = <$rev_parse>;
+    close $rev_parse or die"Couldn't expand the blob index: ", $? >> 8;
+    chomp $initialblob;
+
+    # Store the initial blob, as well as the index after modification
+    $files{$file}{"initial"} = $initialblob;
+    $files{$file}{"modified"} = $modifiedshortblob;
+}
+
+# Subroutine to check a commit treeish, ensuring that every blob is present at
+# the correct path. This allows us to determine whether the commit is "good",
+# ie: has all the blobs required to cleanly apply the patch, or not.
+sub check_commit {
+    my ( $commit ) = @_;
+
+    # Loop through every blob/path combination from the mbox, and check if the
+    # ls-tree on that path matches the blob we need.
+    for my $path ( keys %files) {
+        my $blob = $files{$path}{"initial"};
+
+        # We shouldn't try to find a new file, as it won't exist yet
+        continue if $blob eq "new";
+
+        # Fail with die on the pipe since this should always work.
+        open my $ls_tree, '-|', 'git' => 'ls-tree' => '--full-tree' => $commit => '--', $path
+            or die "Couldn't open pipe to git-ls-tree: ", $!;
+
+        # Return here if we fail to find the file, because it might not yet
+        # exist.
+        my $tree = <$ls_tree>;
+        close $ls_tree or do {
+            print STDERR "Couldn't find matching tree: ", $? >> 8;
+            return;
+        };
+        chomp $tree;
+
+        # Check the output formatting to ensure we didn't get any errors
+        $tree =~ /\A[0-7]{6} (\S+) (\S+)/ or do {
+            print STDERR "Unexpected git-ls-tree output.\n";
+            return;
+        };
+
+        # Return undef if they don't match. This will ensure we bail at the
+        # first conflicting blob, without forcing extra checks.
+        return if $2 ne $blob;
+    }
+
+    # If we get here, then everything matched above, so we can return true.
+    return 1;
+}
+
+# Open the log pipe. Pass all of our ARGV directly to the log command
+open my $log, '-|', git => log => @ARGV, '--pretty=format:%T %H'
+    or die "Couldn't open pipe to git-log: ", $!;
+
+# Loop through each commit in the log, checking if it's tree and hash have all
+# the valid blobs. User can easily modify the log command via options to limit
+# the scope, or reverse ordering. By default we find the most recent commit
+# which has the required blobs.
+while ( <$log> ) {
+    chomp;
+    my ($tree, $commit) = split " ", $_;
+
+    if (check_commit $commit) {
+        # Print the commit hash we found, and exit with a good return status.
+        print "$commit\n";
+        exit 0;
+    }
+}
+
+# We failed to find a commit, so exit 1
+print STDERR "Failed to find matching base commit.\n";
+exit 1;
