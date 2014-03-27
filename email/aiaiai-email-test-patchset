@@ -138,10 +138,10 @@ EOF
 	exit 0
 }
 
-# This function is called when the 'aiaiai-test-patchest' fails. This most
-# probably means a bug or configuration issues. This function sends
-# corresponding e-mail notification.
-error_test_patchset_failed()
+# This function is called when an internal error occurs, such as when
+# aiaiai-test-patchset fails. This most probably means a bug or configuration
+# issue occurred. This function sends a corresponding email notification.
+error_internal_error_occurred()
 {
 	send_email <<EOF
 Sorry, but an internal $cfg_ownname error happened. Please, contact
@@ -318,7 +318,7 @@ aiaiai-test-patchset $verbose ${cfg_preserve_files:+--preserve} \
 	"$pcfg_path" "$pcfg_configs" > "$tmpdir/test-patchset.log" ||
 {
 	verbose "aiaiai-test-patchset failed"
-	error_test_patchset_failed
+	error_internal_error_occurred
 }
 
 # Mail the results of testing
