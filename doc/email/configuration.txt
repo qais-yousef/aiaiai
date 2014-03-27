@@ -155,6 +155,10 @@ specified for each project.
     branch ie: origin/master, but can actually be any refspec. Note that the
     defconfigs specified in the config option must actually be available from
     the refspec.
+* canonical_url
+    The url to use when displaying a url for user consumption. Intended to be a
+    patch-submitter visible mirror of the local path used internally. If not
+    supplied, aiaiai will display the path instead.
 
 2.4 Aiaiai Hooks
 ~~~~~~~~~~~~~~~~

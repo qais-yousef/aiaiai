@@ -73,9 +73,17 @@ list_projects()
 		# Get project description
 		local descr
 		ini_config_get_or_die descr "$cfgfile" "prj_$prj" "description"
-
 		local email="$cfg_ownmail_local+$prj@$cfg_ownmail_domain"
-		printf "* %s\n" "$prj ($email): $descr"
+
+		# If given a url, display a sample clone line in the project
+		url="$(ini_config_get "$cfgfile" "prj_$prj" "canonical_url")"
+		branch="$(ini_config_get "$cfgfile" "prj_$prj" "branch")"
+
+		if [ -n "$url" ]; then
+			printf "* %s\n" "$prj ($email) [git clone -b $branch $url]: $descr"
+		else
+			printf "* %s\n" "$prj ($email): $descr"
+		fi
 	done
 }
 

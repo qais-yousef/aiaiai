@@ -213,7 +213,7 @@ __parse_default_config()
 # Similar to "parse_config", but parses a project configuration section. If the
 # project is found, the following variables are defined:
 #
-# pcfg_name, pcfg_description, pcfg_path and pcfg_branch.
+# pcfg_name, pcfg_description, pcfg_path, pcfg_branch and pcfg_canonical_url.
 #
 # The following variables are defined, but receive default values from the
 # [defaults] section, if they are not specified in the project section:
@@ -241,6 +241,7 @@ parse_prj_config()
 	ini_config_get_or_die pcfg_description   "$cfgfile" "prj_$prj" "description"
 	ini_config_get_or_die pcfg_path          "$cfgfile" "prj_$prj" "path"
 	ini_config_get_or_die pcfg_branch        "$cfgfile" "prj_$prj" "branch"
+	pcfg_canonical_url="$(ini_config_get "$cfgfile" "prj_$prj" "canonical_url")"
 
 	# The following options all take default value from the "defaults"
 	# section, and hence "override" those settings. First we need to populate those.
