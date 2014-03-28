@@ -116,7 +116,7 @@ while true; do
 	shift
 done
 
-[ "$#" -eq 2 ] || die "Insufficient or too many arguments"
+[ "$#" -eq 2 ] || fail_usage "Insufficient or too many arguments"
 
 program_required "inotifywait" ""
 

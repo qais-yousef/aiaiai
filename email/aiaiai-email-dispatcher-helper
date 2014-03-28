@@ -84,7 +84,7 @@ while true; do
 	shift
 done
 
-[ "$#" -eq 4 ] || die "Insufficient or too many arguments"
+[ "$#" -eq 4 ] || fail_usage "Insufficient or too many arguments"
 
 mbox="$(readlink -fv -- "$1")"; shift
 fail_file="$1"; shift

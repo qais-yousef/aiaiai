@@ -341,7 +341,7 @@ while true; do
 	shift
 done
 
-[ "$#" -ge 2 ] || die "Insufficient arguments"
+[ "$#" -ge 2 ] || fail_usage "Insufficient arguments"
 
 kernel_tree="$(readlink -ev -- "$1")"; shift
 defconfigs="$@"

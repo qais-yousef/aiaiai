@@ -223,7 +223,7 @@ while true; do
 	shift
 done
 
-[ "$#" -eq 1 ] || die "Insufficient or too many arguments"
+[ "$#" -eq 1 ] || fail_usage "Insufficient or too many arguments"
 
 program_required "mutt" ""
 program_required "grep" ""
