@@ -73,15 +73,17 @@ while ($mbox =~ /^diff --git [iwcoab]\/(?<oldfile>\S+) [iwcoab]\/(?<newfile>\S+)
     if (exists $files{$file}) {
         # Check if the blob matches the last known result of the file
         if (match_index($initialshortblob, $files{$file}{"modified"})) {
-            print STDERR "Found further modification of $file from $initialshortblob to $modifiedshortblob\n";
+            print STDERR "Found further modification of $file, ($initialshortblob -> $modifiedshortblob).\n";
             $files{$file}{"modified"} = $modifiedshortblob;
             next;
-        } else{
-            die "Found futher modification of $file that does not match expected index. Is the patch sequence out of order?";
+        } elsif (match_index($modifiedshortblob, $files{$file}{"modified"}) and match_index($initialshortblob, $files{$file}{"initial"})) {
+            print STDERR "Found duplicate modification of $file. Possible duplicate patch blob, or an incorrect patch format? Ignoring for now.\n";
+        } else {
+            die "Found futher modification of $file that does not match expected index, ($initialshortblob -> $modifiedshortblob). Is the patch sequence out of order?";
         }
     }
 
-    print STDERR "Found $file modified from $initialshortblob to $modifiedshortblob\n";
+    print STDERR "Found modification to $file, ($initialshortblob -> $modifiedshortblob).\n";
 
     # We have to process the short blob index into a full index value using
     # git-rev-parse, otherwise the lookup will fail.
@@ -89,7 +91,7 @@ while ($mbox =~ /^diff --git [iwcoab]\/(?<oldfile>\S+) [iwcoab]\/(?<newfile>\S+)
         or die "Couldn't open pipe to git-rev-parse: ", $!;
 
     my $initialblob = <$rev_parse>;
-    close $rev_parse or die"Couldn't expand the blob index: ", $? >> 8;
+    close $rev_parse or die "Couldn't expand the blob index: ", $? >> 8;
     chomp $initialblob;
 
     # Store the initial blob, as well as the index after modification
