@@ -11,6 +11,53 @@
 use 5.016;
 use warnings;
 use strict;
+use Getopt::Long;
+use File::Basename;
+
+my $PROG = basename($0);
+
+sub show_usage {
+    print STDERR <<END;
+Usage: $PROG [options] -- [options and arguments to git-log] ...
+
+This is a specialized extension of git, which can be used to help find a commit
+to which a given mbox is applicable. The mbox is expected to be passed in via
+standard input.
+
+This works by parsing diff and index information from the patch
+or series of patches, in order to determine what initial index it should check
+for. By default it will search the entire history (each commit, going backwards
+from HEAD). You may pass arguments to git-log which limit this search. Detailed
+explanation of the various git-log options which may be useful here, is beyond
+the scope of this usage output, however a few examples are provided below.
+
+Examples:
+; check only the most recent commit, and stop if it fails.
+    git find-base -- -1 HEAD < "mbox-file"
+; check the most recent commit of a branch
+    git find-base -- -1 branch < "mbox-file"
+; check commits between two branches
+    git find-base -- master..devel < "mbox-file"
+
+Essentially, the arguments are passed to generate a list of commit objects to
+check, and you can use the powerful options in git-log to craft this list to
+what you want to check against.
+
+The tool works by checking index information, and will return the first commit
+from git-log for which the mbox passed has matching initial index information.
+This means that the mbox *will* apply cleanly to that patch, because it has
+exact initial index as it expected. It does *not* require that the patch be
+based exactly on the commit that was supplied, but only that the files it
+modified are exactly what it thought.
+
+Warnings and errors are printed to the standard error, and the only output to
+standard out will be a single commit id. If nothing was found, no standard
+output will be generated, and this utility will exit with a non-zero exit code.
+
+Options:
+    -?, -h      Show this text and exit.
+END
+}
 
 # subroutine to check whether two blob indexes match, (ie: one
 # contains the other regardless of which one is larger)
@@ -30,6 +77,9 @@ sub match_index {
     # Return the match
     return $tx == $ty;
 }
+
+Getopt::Long::Configure("pass_through");
+GetOptions('h|?' => sub { show_usage; exit 0; });
 
 # Slurp the contents into $mbox for processing
 my $mbox = do { local $/; <STDIN> };
