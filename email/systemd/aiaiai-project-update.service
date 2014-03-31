@@ -1,0 +1,13 @@
+# Copyright 2014 Intel Corporation
+# Author: Jacob Keller
+# License: GPLv2
+[Unit]
+Description=Aiaiai Project Updater
+OnFailure=send-mail-on-failure@%n.service
+
+[Service]
+User=aiaiai
+ExecStart=/home/aiaiai/git/aiaiai/email/systemd/aiaiai-project-update -v /home/aiaiai/work/aiaiai.cfg
+
+[Install]
+WantedBy=multi-user.target
