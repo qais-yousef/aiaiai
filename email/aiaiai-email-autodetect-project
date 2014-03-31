@@ -35,10 +35,6 @@ apply. It depends on git-find-base which is included in the helpers folder.
 
 <cfgfile.ini>          - the configuration file.
 <mbox>                 - the mbox file containing the patch series
-
-Options:
-  -v, --verbose          be verbose;
-  -h, --help             show this text and exit.
 EOF
 }
 
@@ -49,7 +45,7 @@ fail_usage()
 	exit 1
 }
 
-verbose=
+verbose=-v
 tmpdir=
 cleanup_handler()
 {
@@ -62,27 +58,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long input:,verbose,help -- "$@"` ||
-	fail_usage ""
-eval set -- "$TEMP"
-
-while true; do
-	case "$1" in
-	-v|--verbose) verbose=-v
-		;;
-	-h|--help)
-		show_usage
-		exit 0
-		;;
-	--) shift; break
-                ;;
-	*) fail_usage "Unrecognized option: $1"
-		;;
-	esac
-	shift
-done
-
-[ "$#" -eq 2 ] || die "Insufficient or too many arguments"
+[ "$#" -eq 2 ] || fail_usage "Insufficient or too many arguments"
 
 cfgfile="$(readlink -fv -- "$1")"; shift
 mbox="$(readlink -fv -- "$1")"; shift
