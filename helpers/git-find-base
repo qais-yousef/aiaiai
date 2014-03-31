@@ -1,5 +1,9 @@
 #!/usr/bin/perl
 #
+# Copyright 2014 Intel Corporation
+# Author: Jacob Keller
+# License: GPLv2
+#
 # Find the most recent commit that a given mbox (*with* index information!) can
 # apply, assuming that our tree has the blobs available. Passes all options
 # directly to git-log, so you can shorten or filter what commits to check as
