@@ -103,7 +103,7 @@ expected_prj="$(fetch_project_name "$list" "cfg_ownmail")"
 # Loop through every project and check if we can find a base commit. If we're
 # given an expected project in the email address, try it first, so that we
 # don't accidentally land on the wrong one.
-for prj in $expected_prj $(parse_config_supported_projects "$cfgfile"); do
+for prj in $expected_prj $(get_cfgfile_projects_list "$cfgfile"); do
 	# First to be safe, unset the project config variables that we use
 	unset pcfg_branch pcfg_path pcfg_name branch_base
 
