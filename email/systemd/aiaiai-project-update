@@ -29,7 +29,7 @@ find_unique_repositories()
 {
 	local cfgfile="$1"; shift
 
-	parse_config_supported_projects "$cfgfile" | \
+	get_cfgfile_projects_list "$cfgfile" | \
 	while read -r prj; do
 		ini_config_get_or_die path "$cfgfile" "prj_$prj" "path"
 		printf "%s\n" "$path"
