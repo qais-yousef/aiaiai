@@ -4,8 +4,11 @@
 # Author: Jacob Keller
 # License: GPLv2
 
+service=$1
+email=$2
+
 (
-echo "$1 has crashed, and you need to restart it!"
+echo "$service has crashed, and you need to restart it!"
 echo "Here is the systemctl status output:"
-systemctl status -n 100 "$1"
-) | mutt -s "$1 crashed!" jacob.e.keller@intel.com
+systemctl status -n 100 "$service"
+) | mutt -s "$service crashed!" $email
