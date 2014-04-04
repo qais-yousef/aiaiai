@@ -7,7 +7,7 @@
 # Run git-remote-update for each unique repository in the aiaiai cfg file
 
 srcdir="$(readlink -ev -- ${0%/*})"
-PATH="$srcdir/..:$srcdir/../email:$srcdir/../helpers:$srcdir/../helpers/libshell:$PATH"
+PATH="$srcdir/../..:$srcdir/../../email:$srcdir/../../helpers:$srcdir/../../helpers/libshell:$PATH"
 
 . shell-error
 . shell-args
