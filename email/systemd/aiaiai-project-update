@@ -54,7 +54,7 @@ EOF
 
 fail_usage()
 {
-	[ -z "$1" ] || print "%s\n" "$1"
+	[ -z "$1" ] || printf "%s\n" "$1"
 	show_usage
 	exit 1
 }
