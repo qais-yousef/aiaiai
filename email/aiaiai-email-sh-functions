@@ -226,6 +226,12 @@ parse_config()
 	ini_config_get_or_die cfg_signature      "$cfgfile" "global" "signature"
 	ini_config_get_or_die cfg_built_preamble "$cfgfile" "global" "built_preamble"
 
+	# Get Email LDA settings
+	cfg_lda_reap_archive="$(ini_config_get "$cfgfile" "lda" "reap_archive")"
+	cfg_lda_reap_archive="$(config_check_number "reap_archive" "$cfg_lda_reap_archive")"
+	cfg_lda_reap_incomplete="$(ini_config_get "$cfgfile" "lda" "reap_incomplete")"
+	cfg_lda_reap_incomplete="$(config_check_number "reap_incomplete" "$cfg_lda_reap_incomplete")"
+
 	# Get the location of email hook(s)
 	cfg_email_hook="$(ini_config_get "$cfgfile" "hooks" "email")"
 	cfg_email_hook="$(config_check_exec "email" "$cfg_email_hook")"

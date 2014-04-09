@@ -47,10 +47,6 @@ e-mail address, etc).
 <config.ini> - the configuration file
 
 Options:
-      --reap-archive=MIN     remove all files created earlier than MIN
-                             minutes ago from the mail archive directory;
-      --reap-incomplete=MIN  remove all incomplete patch series older than
-                             current time minus MIN minutes;
   -v, --verbose              be verbose;
   -h, --help                 show this text and exit.
 EOF
@@ -459,20 +455,10 @@ TEMP=`getopt -n $PROG -o v,h --long reap-archive:,reap-incomplete:,verbose,help 
 	fail_usage ""
 eval set -- "$TEMP"
 
-archive_min=
-incomplete_min=
 verbose=
 
 while true; do
 	case "$1" in
-	--reap-archive)
-		archive_min="$(opt_check_number "$1" "$2")"
-		shift
-		;;
-	--reap-incomplete)
-		incomplete_min="$(opt_check_number "$1" "$2")"
-		shift
-		;;
 	-v|--verbose) verbose=-v
 		;;
 	-h|--help)
@@ -563,8 +549,8 @@ process_mbox "$mbox"
 
 process_all_series "$mbox"
 
-[ -z "$incomplete_min" ] || reap_old "$lda_tmp" "$incomplete_min"
-[ -z "$archive_min" ] || reap_old "$mail" "$archive_min"
-[ -z "$archive_min" ] || reap_old "$queue_saved" "$archive_min"
+[ -z "$cfg_lda_reap_incomplete" ] || reap_old "$lda_tmp" "$cfg_lda_reap_incomplete"
+[ -z "$cfg_lda_reap_archive" ] || reap_old "$mail" "$cfg_lda_reap_archive"
+[ -z "$cfg_lda_reap_archive" ] || reap_old "$queue_saved" "$cfg_lda_reap_archive"
 
 rm $verbose -f -- "$lda_tmp_lock" >&2
