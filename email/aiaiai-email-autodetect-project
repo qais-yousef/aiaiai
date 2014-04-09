@@ -69,6 +69,7 @@ parse_config "$cfgfile"
 
 # Create a temporary directory for storage of any files we might need
 tmpdir="$(mktemp --tmpdir="$cfg_workdir" -dt "$PROG.XXXX")"
+tmp_find_base="$tmpdir/git-find-base.out"
 
 # Get the expected project from the patch email
 to="$(fetch_header "To" < "$mbox")"
@@ -100,7 +101,7 @@ for prj in $expected_prj $(get_cfgfile_projects_list "$cfgfile"); do
 	# supplied, otherwise use the parent(s) of pcfg_branch as the limiter.
 	# This enables only checking a small range instead of having to check
 	# the full history.
-	commit="$(git --git-dir="$(git_dir "$pcfg_path")" find-base "$pcfg_branch" "${branch_base:-$pcfg_branch}^!" < "$mbox" \
+	commit="$(git --git-dir="$(git_dir "$pcfg_path")" find-base "$pcfg_branch" "${branch_base:-$pcfg_branch}^!" 2>>"$tmp_find_base" < "$mbox" \
 		|| verbose "No matching base commit in project $prj" )"
 
 	# Break out of loop once we find a base
@@ -117,6 +118,10 @@ if [ -n "$commit" ]; then
 	printf "%s\n" "X-Aiaiai-Commit: $commit"
 else
 	if [ -z "$expected_prj" ]; then
+
+	verbose "No project found. Output of git-find-base:"
+	cat "$tmp_find_base" 1>&2
+
 	cat <<EOF
 Aiaiai was unable to correctly determine the project for your patch submission.
 Normally the diff index information provided by git's diff mechanism is enough.
