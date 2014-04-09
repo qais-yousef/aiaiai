@@ -175,7 +175,7 @@ apply_patch()
 
 	cmt="$(git rev-parse "HEAD^{commit}")"
 
-	am="$(git am 2>&1)" || {
+	am="$(formail -s aiaiai-extract-patches | git am --3way 2>&1)" || {
 		cat <<EOF
 Failed to apply patch(es) with git am on top of:
 $(git log -1 --oneline "$cmt")

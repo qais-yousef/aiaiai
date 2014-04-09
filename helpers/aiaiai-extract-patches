@@ -1,0 +1,76 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+
+"""
+Extract attached patches from MIME messaged passed to standard input. Will
+output an mbox where each message contains a single patch. Assumes attachments
+will begin with '>From' to indicate they are a seperate email to be extracted.
+
+Copyright 2014 Intel Corporation
+Author: Jacob Keller <jacob.e.keller@intel.com>
+License: GPLv2
+"""
+
+import argparse
+import email
+import sys
+
+def main():
+    """Extract attached patches from stdin as a MIME email."""
+    headers_to_copy = ["From", "Date", "Subject", "To"]
+
+    description = """\
+Extract git patches out of an email message, including if the patch is embedded
+in the email as an attachment from git-format-patch. %(prog)s only works on a
+single email message at a time, so another program for splitting mbox files
+such as formail is suggested."""
+
+    parser = argparse.ArgumentParser(description=description)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--discard-inline",
+                       dest="inline",
+                       action="store_false",
+                       help=("discard inlined segment, "
+                             "keeping only git-format-patch attachments"))
+    group.add_argument("--discard-attachments",
+                       dest="attachments",
+                       action="store_false",
+                       help=("discard any git-format-patch attachments, "
+                             "keeping only inlined email"))
+
+    args = parser.parse_args()
+
+    # Now, grab standard input and parse it as an email message
+    msg = email.message_from_file(sys.stdin)
+    patches = []
+
+    if msg.is_multipart():
+        segments = msg.get_payload()
+        for segment in segments[:]:
+            if segment.get_payload().startswith(">From "):
+                segments.remove(segment)
+                patches.append(email.message_from_string(
+                    segment.get_payload()[1:]))
+
+    inline = email.message.Message()
+    inline.set_unixfrom(msg.get_unixfrom())
+    for header in headers_to_copy:
+        inline[header] = msg[header]
+
+    if msg.is_multipart():
+        inline.set_payload("".join([x.get_payload()
+            for x in msg.get_payload()]))
+    else:
+        inline.set_payload(msg.get_payload())
+
+    if args.inline:
+        print inline.as_string(unixfrom=True)
+
+    if args.attachments:
+        for patch in patches:
+            print patch.as_string(unixfrom=True)
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+# vim: ts=4 et sw=4 sts=4 ai sta:
