@@ -239,9 +239,8 @@ if [ -z "$mbox" ]; then
 	cat > "$mbox"
 fi
 
-cat "$mbox"
 # Use the cover letter subject and message ID if possible. If the cover letter
-# was present, 'aiaiai-email-lda' would save them in special privat headers.
+# was present, 'aiaiai-email-lda' would save them in special private headers.
 subj="$(fetch_header "X-Aiaiai-Cover-Letter-Subject" < "$mbox")"
 [ -n "$subj" ] || fetch_header_or_die subj "Subject" < "$mbox"
 
