@@ -4,6 +4,7 @@
 # Author: Artem Bityutskiy
 # License: GPLv2
 
+. shell-args
 . shell-error
 . shell-ini-config
 . shell-quote
@@ -142,6 +143,56 @@ get_cfgfile_projects_list()
 	LC_ALL=C sed -n -e "s/^\[prj_\(.*\)\]$/\1/p" "$cfgfile"
 }
 
+# Like opt_check_number, except doesn't fail on empty number.
+# Arguments: $1 is config name, $2 is config value.
+# If $2 is a positive decimal, outputs it, otherwise fails.
+config_check_number()
+{
+	if [ -n "$2" ]; then
+		[ -n "${2##0*}" -a -n "${2##*![0-9]*}" ] &&
+		[ "$2" -gt 0 ] 2>/dev/null ||
+			fatal "$1: $2: invalid number."
+	fi
+	printf %s "$2"
+}
+
+
+# Like opt_check_file, except requires executable permissions
+# Arguments: $1 is config name, $2 is config value.
+# If $2 is an executable file, outputs canonicalized file name,
+# otherwise fails.
+config_check_exec()
+{
+	local value
+	[ -x "$2" ] &&
+	value="$(readlink -ev "$2")" ||
+		fatal "$1: $2: not an executable file."
+	printf %s "$value"
+}
+
+# Check whether config value is boolean. Empty string is considered false.
+# Arguments: $1 is config name, $2 is config value.
+# If $2 is a boolean value, output canonicalized value,
+# otherwise, fails.
+config_check_boolean()
+{
+	local value
+	value="$(echo "$2" | tr '[:upper:]' '[:lower:]')"
+
+	# Prefixing with _ makes it easier to catch empty string as false
+	case "_$value" in
+	_|_0|_false|no)
+		printf %s "0"
+		;;
+	_1|_true|yes)
+		printf %s "1"
+		;;
+	*)
+		fatal "$1: $2: not a boolean value."
+		;;
+	esac
+}
+
 # Parse the "global" section of the config file. The result is a set of
 # per-option variables and their values are exactly as in the configuration
 # file:
@@ -166,18 +217,24 @@ parse_config()
 	ini_config_get_or_die cfg_adminmail      "$cfgfile" "global" "adminmail"
 	ini_config_get_or_die cfg_adminname      "$cfgfile" "global" "adminname"
 	ini_config_get_or_die cfg_workdir        "$cfgfile" "global" "workdir"
+	cfg_workdir="$(opt_check_dir "workdir" "$cfg_workdir")"
 	ini_config_get_or_die cfg_max_validators "$cfgfile" "global" "max_validators"
+	cfg_max_validators="$(config_check_number "max_validators" "$cfg_max_validators")"
 	ini_config_get_or_die cfg_jobs           "$cfgfile" "global" "jobs"
+	cfg_jobs="$(config_check_number "jobs" "$cfg_jobs")"
 	ini_config_get_or_die cfg_preamble       "$cfgfile" "global" "preamble"
 	ini_config_get_or_die cfg_signature      "$cfgfile" "global" "signature"
 	ini_config_get_or_die cfg_built_preamble "$cfgfile" "global" "built_preamble"
 
 	# Get the location of email hook(s)
 	cfg_email_hook="$(ini_config_get "$cfgfile" "hooks" "email")"
+	cfg_email_hook="$(config_check_exec "email" "$cfg_email_hook")"
 
 	# Debug options
 	cfg_disable_notifications="$(ini_config_get "$cfgfile" "debug" "disable_notifications")"
+	cfg_disable_notifications="$(config_check_boolean "disable_notifications" "$cfg_disable_notifications")"
 	cfg_preserve_files="$(ini_config_get "$cfgfile" "debug" "preserve_files")"
+	cfg_preserve_files="$(config_check_boolean "preserve_files" "$cfg_preserve_files")"
 
 	# Get the contents of the preamble file
 	cfg_preamble="$(cat "$cfg_preamble")"
@@ -262,30 +319,50 @@ parse_prj_config()
 	# project config does not specify anything.
 	pcfg_configs="$(ini_config_get "$cfgfile" "prj_$prj" "configs")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "configs" || pcfg_configs="$__dcfg_configs"
+
 	pcfg_reply_to_all="$(ini_config_get "$cfgfile" "prj_$prj" "reply_to_all")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "reply_to_all" || pcfg_reply_to_all="$__dcfg_reply_to_all"
+	pcfg_reply_to_all="$(config_check_boolean "reply_to_all" "$pcfg_reply_to_all")"
+
 	pcfg_accept_notify="$(ini_config_get "$cfgfile" "prj_$prj" "accept_notify")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "accept_notify" || pcfg_accept_notify="$__dcfg_accept_notify"
+	pcfg_accept_notify="$(config_check_boolean "accept_notify" "$pcfg_accept_notify")"
+
 	pcfg_always_cc="$(ini_config_get "$cfgfile" "prj_$prj" "always_cc")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "always_cc" || pcfg_always_cc="$__dcfg_always_cc"
+
 	pcfg_unwanted_keywords="$(ini_config_get "$cfgfile" "prj_$prj" "unwanted_keywords")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "unwanted_keywords" || pcfg_unwanted_keywords="$__dcfg_unwanted_keywords"
+
 	pcfg_kmake_opts="$(ini_config_get "$cfgfile" "prj_$prj" "kmake_opts")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "kmake_opts" || pcfg_kmake_opts="$__dcfg_kmake_opts"
+
 	pcfg_targets="$(ini_config_get "$cfgfile" "prj_$prj" "targets")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "targets" || pcfg_targets="$__dcfg_targets"
+
 	pcfg_defconfigdir="$(ini_config_get "$cfgfile" "prj_$prj" "defconfigdir")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "defconfigdir" || pcfg_defconfigdir="$__dcfg_defconfigdir"
+	[ -z "$pcfg_defconfigdir" ] || pcfg_defconfigdir="$(opt_check_dir "defconfigdir" "$pcfg_defconfigdir")"
+
 	pcfg_bisectability="$(ini_config_get "$cfgfile" "prj_$prj" "bisectability")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "bisectability" || pcfg_bisectability="$__dcfg_bisectability"
+	pcfg_bisectability="$(config_check_boolean "bisectability" "$pcfg_bisectability")"
+
 	pcfg_sparse="$(ini_config_get "$cfgfile" "prj_$prj" "sparse")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "sparse" || pcfg_sparse="$__dcfg_sparse"
+	pcfg_sparse="$(config_check_boolean "sparse" "$pcfg_sparse")"
+
 	pcfg_smatch="$(ini_config_get "$cfgfile" "prj_$prj" "smatch")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "smatch" || pcfg_smatch="$__dcfg_smatch"
+	pcfg_smatch="$(config_check_boolean "smatch" "$pcfg_smatch")"
+
 	pcfg_cppcheck="$(ini_config_get "$cfgfile" "prj_$prj" "cppcheck")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "cppcheck" || pcfg_cppcheck="$__dcfg_cppcheck"
+	pcfg_cppcheck="$(config_check_boolean "cppcheck" "$pcfg_cppcheck")"
+
 	pcfg_coccinelle="$(ini_config_get "$cfgfile" "prj_$prj" "coccinelle")"
 	ini_config_is_set "$cfgfile" "prj_$prj" "coccinelle" || pcfg_coccinelle="$__dcfg_coccinelle"
+	pcfg_coccinelle="$(config_check_boolean "coccinelle" "$pcfg_coccinelle")"
 }
 
 # Compose (but not send) e-mail reply. This function assumes that the following
