@@ -288,19 +288,23 @@ hookscript="$(readlink -ev -- $cfg_email_hook)"
 if [ -f "$hookscript" ] && [ -x "$hookscript" ]; then
 	# Hook points to an executable file, so we run it
 	verbose "Executing \"$hookscript\""
-	if ! "$hookscript" "$cfgfile" "$mbox" > "$hookoutput"; then
-		hookret=$?
 
-		# Error code 127 is an expected output of the hook, and
-		# indicates that we should reject this patch. The reply email
-		# will be sent to the user, and the hook is expected to have
-		# outputted the rejection indication. As a precaution, the
-		# rejection email will include a list of projects supported.
-		if [ "$hookret" -eq "127" ]; then
-			error_hook_rejected_patch < "$hookoutput"
-		else
-			error_internal_error_occurred
-		fi
+	# Grab the error code here, using an || section to prevent exit on
+	# command failure. Otherwise, the non-zero exit code from the hook
+	# script would crash aiaiai-email-test-patchset
+	hookret="0"
+	"$hookscript" "$cfgfile" "$mbox" > "$hookoutput" || hookret="$?"
+
+	# Error code 127 is an expected output of the hook, and
+	# indicates that we should reject this patch. The reply email
+	# will be sent to the user, and the hook is expected to have
+	# outputted the rejection indication. As a precaution, the
+	# rejection email will include a list of projects supported.
+	if [ "$hookret" -eq "127" ]; then
+		error_hook_rejected_patch < "$hookoutput"
+	elif [ "$hookret" -ne "0" ]; then
+		verbose "Hook exited with error code \"$hookret\"..."
+		error_internal_error_occurred
 	fi
 fi
 
