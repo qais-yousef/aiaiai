@@ -133,7 +133,7 @@ List of projects $cfg_ownname supports:
 
 $(list_projects)
 
-Please, contact "$cfg_adminname" <$cfg_adminemail>
+Please, contact "$cfg_adminname" <$cfg_adminmail>
 if you have any questions.
 EOF
 	exit 0
