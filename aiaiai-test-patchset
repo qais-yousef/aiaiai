@@ -428,10 +428,15 @@ git show "$commit_id1:scripts/checkpatch.pl" > "$checkpatch_pl"
 chmod $verbose u+x "$checkpatch_pl" >&2
 
 if [ -n "$coccinelle" ]; then
-	mkdir -p $verbose "$tmpdir/coccinelle" >&2
-	git archive "$commit_id1" scripts/coccinelle | \
-		tar $verbose --strip-components=2 -C "$tmpdir/coccinelle" -x >&2
-	coccinelle="--coccinelle=$tmpdir/coccinelle"
+	if git cat-file -e "$commit_id1:scripts/coccinelle"; then
+		mkdir -p $verbose "$tmpdir/coccinelle" >&2
+		git archive "$commit_id1" scripts/coccinelle | \
+			tar $verbose --strip-components=2 -C "$tmpdir/coccinelle" -x >&2
+		coccinelle="--coccinelle=$tmpdir/coccinelle"
+	else
+		verbose "Can't find coccinelle scripts.. disabling coccinelle tests."
+		coccinelle=
+	fi
 fi
 
 # Run checkpatch.pl in backgound.
