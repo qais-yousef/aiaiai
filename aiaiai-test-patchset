@@ -239,7 +239,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,Q:,K:,M:,v,h --long jobs:,commit-id:,input:,workdir:,logdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,quick-fixes:,targets:,keywords:,kmake-opts:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,Q:,K:,M:,v,h --long jobs:,commit-id:,input:,workdir:,logdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,checkpatch,quick-fixes:,targets:,keywords:,kmake-opts:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -253,6 +253,7 @@ sparse=
 smatch=
 cppcheck=
 coccinelle=
+checkpatch=
 quick_fixes=
 targets="all"
 keywords=
@@ -316,6 +317,9 @@ while true; do
 	--targets)
 		targets="$2"
 		shift
+		;;
+	--checkpatch)
+		checkpatch="yes"
 		;;
 	-K|--keywords)
 		keywords="$(opt_check_read "$1" "$2")"
@@ -419,13 +423,20 @@ git diff -U0 -M "$commit_id1".."$commit_id2" > "$tmpdir/diff-for-diff-log"
 # Generate a diff for checkpatch.pl
 git diff -M "$commit_id1".."$commit_id2" > "$tmpdir/diff-for-checkpatch"
 
-# Make a copy of 'checlpatch.pl' and coccinelle scripts. This is safer than
+# Make a copy of 'checkpatch.pl' and coccinelle scripts. This is safer than
 # using them directly from the git tree because we'll apply patches under test
-# there, and the patches may also change 'checlpatch.pl' or coccinelle scripts.
-mkdir -p $verbose "$tmpdir/checkpatch" >&2
-checkpatch_pl="$tmpdir/checkpatch/checkpatch.pl"
-git show "$commit_id1:scripts/checkpatch.pl" > "$checkpatch_pl"
-chmod $verbose u+x "$checkpatch_pl" >&2
+# there, and the patches may also change 'checkpatch.pl' or coccinelle scripts.
+if [ -n "$checkpatch" ]; then
+	if git cat-file -e "$commit_id1:scripts/checkpatch.pl" 2>/dev/null; then
+		mkdir -p $verbose "$tmpdir/checkpatch" >&2
+		checkpatch_pl="$tmpdir/checkpatch/checkpatch.pl"
+		git show "$commit_id1:scripts/checkpatch.pl" > "$checkpatch_pl"
+		chmod $verbose u+x "$checkpatch_pl" >&2
+	else
+		verbose "Can't find checkpatch.pl.. disabling checkpatch tests."
+		checkpatch=
+	fi
+fi
 
 if [ -n "$coccinelle" ]; then
 	if git cat-file -e "$commit_id1:scripts/coccinelle"; then
@@ -440,8 +451,10 @@ if [ -n "$coccinelle" ]; then
 fi
 
 # Run checkpatch.pl in backgound.
-test_checkpatch &
-pid_checkpatch="$!"
+if [ -n "$checkpatch" ]; then
+	test_checkpatch &
+	pid_checkpatch="$!"
+fi
 
 # Search for keywords
 if [ -n "$keywords" ]; then
@@ -464,7 +477,7 @@ for defconfig in $defconfigs; do
 	test_configuration "$defconfig"
 done
 
-wait "$pid_checkpatch" || die "checkpatch failed"
+[ -z "$checkpatch" ]   || wait "$pid_checkpatch" || die "checkpatch failed"
 [ -z "$keywords" ]     || wait "$pid_keywords" || die "aiaiai-match-keywords failed"
 [ -z "$pid_bisect" ]   || wait "$pid_bisect"   || die "aiaiai-test-bisectability failed"
 

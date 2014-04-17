@@ -134,6 +134,9 @@ additive.
 * coccinelle
     A boolean (0 or 1) indicating whether to use the coccinelle scripts during
     static analysis.
+* checkpatch
+    A boolean (0 or 1) indicating whether to use checkpatch.pl for testing
+    patches. Requires kernel project with checkpatch provided.
 
 The following options do not have default settings per project and must be
 specified for each project.

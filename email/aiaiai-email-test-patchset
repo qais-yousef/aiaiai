@@ -330,11 +330,13 @@ sparse=
 smatch=
 cppcheck=
 coccinelle=
+checkpatch=
 [ "$pcfg_bisectability" != "1" ] || bisectablity="--bisectability"
 [ "$pcfg_sparse" != "1" ] || sparse="--sparse"
 [ "$pcfg_smatch" != "1" ] || smatch="--smatch"
 [ "$pcfg_cppcheck" != "1" ] || cppcheck="--cppcheck"
 [ "$pcfg_coccinelle" != "1" ] || coccinelle="--coccinelle"
+[ "$pcfg_checkpatch" != "1" ] || checkpatch="--checkpatch"
 
 # Create the Cc list for replies that we'll be sending
 if [ "$pcfg_reply_to_all" = "1" ]; then
@@ -358,7 +360,8 @@ commit="$(fetch_header "X-Aiaiai-Commit" < "$hookoutput")"
 # Test the path (or patch-set)
 verbose "Test configs \"$pcfg_configs\" branch \"$pcfg_branch\" of \"$pcfg_path\""
 aiaiai-test-patchset $verbose ${cfg_preserve_files:+--preserve} \
-	${pcfg_targets:+--targets "$pcfg_targets"} $bisectability $sparse $smatch $cppcheck $coccinelle \
+	${pcfg_targets:+--targets "$pcfg_targets"} $bisectability \
+	$sparse $smatch $cppcheck $coccinelle $checkpatch \
 	-i "$mbox" -j "$cfg_jobs" -c "$commit" -w "$tmpdir" \
 	${pcfg_defconfigdir:+-C "$pcfg_defconfigdir"} \
 	${pcfg_unwanted_keywords:+-K "$pcfg_unwanted_keywords"} \
