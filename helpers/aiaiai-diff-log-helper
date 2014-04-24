@@ -46,7 +46,15 @@ Licence: GPLv2
 # drivers/i.c: In function ‘gluebi_erase’:
 # drivers/i.c:177:2: warning: comparison of unsigned expression < 0 is always false [-Wtype-limits]
 #
-# 4. Any other line comprises an independent block
+# 4. All lines starting with a white-space after any of the above blocks are
+#    also part of the block, e.g.,
+#
+# drivers/char/agp/isoch.c: In function ‘agp_3_5_enable’:
+# drivers/char/agp/isoch.c:320:13: warning: variable ‘arqsz’ set but not used [-Wunused-but-set-variable]
+#  u32 isoch, arqsz;
+#             ^
+#
+# 5. Any other line comprises an independent block
 
 import sys
 import os
@@ -57,10 +65,12 @@ def gen_blocks(stream):
     """Parses input stream. Yields found blocks."""
     btype, prefix, block = "", "", []
     for line in stream:
-        # append line to the current block if prefix matches
-        if prefix and line.startswith(prefix):
+        # Append line to the current block if it starts with a white-space
+        if line.startswith(" "):
             block.append(line)
-
+        # Append line to the current block if prefix matches
+        elif prefix and line.startswith(prefix):
+            block.append(line)
         # Define prefix for cases 2 and 3 for further processing
         elif not prefix and btype in ("ifi", "infunc"):
             block.append(line)
