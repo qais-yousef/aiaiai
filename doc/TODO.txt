@@ -25,12 +25,3 @@ implementing them.
     patch-sets.
   * Describe some review policy, e.g., how many days I promise to wait
     for review/reply before applying patches.
-
-* Functional improvements
-  * Gcc 4.8 change the format of warnings and now they look like this:
-
-    arch/x86/kernel/e820.c: In function ‘e820_setup_gap’:
-    arch/x86/kernel/e820.c:630:6: warning: variable ‘found’ set but not used [-Wunused-but-set-variable]
-      int found;
-          ^
-    Aiaiai does not process them correctly which leads to ugly diffs. Fix this.
