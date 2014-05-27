@@ -331,7 +331,7 @@ smatch=
 cppcheck=
 coccinelle=
 checkpatch=
-[ "$pcfg_bisectability" != "1" ] || bisectablity="--bisectability"
+[ "$pcfg_bisectability" != "1" ] || bisectability="--bisectability"
 [ "$pcfg_sparse" != "1" ] || sparse="--sparse"
 [ "$pcfg_smatch" != "1" ] || smatch="--smatch"
 [ "$pcfg_cppcheck" != "1" ] || cppcheck="--cppcheck"
