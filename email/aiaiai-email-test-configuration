@@ -1,0 +1,115 @@
+#!/bin/sh -efu
+
+# Copyright 2014 Intel Corporation
+# Author: Jacob Keller
+# License: GPLv2
+
+# Print the changes in environment after parsing the configuration
+
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir/../:$srcdir/../email:$srcdir/../helpers:$srcdir/../helpers/libshell:$PATH"
+
+. shell-error
+. shell-args
+. shell-signal
+. aiaiai-sh-functions
+. aiaiai-email-sh-functions
+
+PROG="${0##*/}"
+export message_time="yes"
+
+if can_switch_to_dash; then
+	exec dash -euf -- "$srcdir/$PROG" "$@"
+	exit $?
+fi
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] <cfgfile.ini>
+
+This script is useful for debugging the configuration file, and configuration
+parsing engine. It will print out the environment variables created by running
+parse_config and parse_prj_config for each project.
+
+<cfgfile.ini>      - the configuration file.
+
+Options:
+  -v, --verbose    be verbose;
+  -w, --workdir    working directory to store temporary files (defaults to /tmp)
+  -h, --help       show this text and exit.
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+workdir=
+verbose=
+cleanup_handler()
+{
+	rm $verbose -rf -- "$tmpdir" >&2
+	if [ "$cfg_preserve_files" = "1" ]; then
+		verbose "Preserved tmpdir: $tmpdir"
+	else
+		[ -z "$tmpdir" ] || verbose "Removing $tmpdir";
+		rm $verbose -rf -- "$tmpdir" >&2
+	fi
+}
+set_cleanup_handler cleanup_handler
+
+TEMP=`getopt -n $PROG -o v,w:,h --long verbose,workdir:,help -- "$@"` ||
+	fail_usage ""
+eval set -- "$TEMP"
+
+while true; do
+	case "$1" in
+	-v|--verbose)
+		verbose=-v
+		;;
+	-w|--workdir)
+		workdir="$(opt_check_dir "$1" "$2")"
+		shift
+		;;
+	-h|--help)
+		show_usage
+		exit 0
+		;;
+	--) shift; break
+		;;
+	*) fail_usage "Unrecognized option: $1"
+		;;
+	esac
+	shift
+done
+
+[ "$#" -eq 1 ] || fail_usage "Insufficient or too many arguments"
+cfgfile="$(readlink -fv -- "$1")"; shift
+
+tmpdir="$(mktemp ${workdir:+--tmpdir="$workdir"} -dt "$PROG.XXXX")"
+
+# Make a copy of configuration file to project against edits
+cp $verbose -- "$cfgfile" "$tmpdir/config" >&2
+
+# Store the environment prior to running parse_config
+set > "$tmpdir/before.env"
+
+parse_config "$tmpdir/config"
+
+# Store the environment after running parse_config
+set > "$tmpdir/after.env"
+
+printf "Environment for base configuration:\n"
+diff --new-line-format='> %L' --old-line-format='' --unchanged-group-format='' -- "$tmpdir/before.env" "$tmpdir/after.env" ||:
+
+for prj in $(get_cfgfile_projects_list "$tmpdir/config"); do
+	parse_prj_config "$tmpdir/config" "$prj"
+	set > "$tmpdir/$prj.env"
+
+	printf "Environment for $prj configuration:\n"
+	diff --new-line-format='> %L' --old-line-format='' --unchanged-group-format='' -- "$tmpdir/after.env" "$tmpdir/$prj.env" ||:
+done
