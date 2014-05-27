@@ -190,7 +190,7 @@ while true; do
 	shift
 done
 
-[ "$#" -eq 2 ] || die "Please, specify exactly 2 arguments - the kernel tree and the configuration"
+[ "$#" -eq 2 ] || fail_usage "Please, specify exactly 2 arguments - the kernel tree and the configuration"
 
 kernel_tree="$(readlink -ev -- "$1")"; shift
 defconfig_orig="$1"

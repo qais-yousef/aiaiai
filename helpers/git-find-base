@@ -1,0 +1,295 @@
+#!/usr/bin/perl
+#
+# Copyright 2014 Intel Corporation
+# Author: Jacob Keller
+# License: GPLv2
+#
+# Find the most recent commit that a given mbox (*with* index information!) can
+# apply, assuming that our tree has the blobs available. Passes all options
+# directly to git-log, so you can shorten or filter what commits to check as
+# you desire, such as limiting how far back the check will run, and so on.
+use 5.016;
+use warnings;
+use strict;
+use Getopt::Long;
+use File::Basename;
+
+my $PROG = basename($0);
+
+sub show_usage {
+    print STDERR <<END;
+Usage: $PROG [options] -- [options and arguments to git-log] ...
+
+This is a specialized extension of git, which can be used to help find a commit
+to which a given mbox is applicable. The mbox is expected to be passed in via
+standard input.
+
+This works by parsing diff and index information from the patch
+or series of patches, in order to determine what initial index it should check
+for. By default it will search the entire history (each commit, going backwards
+from HEAD). You may pass arguments to git-log which limit this search. Detailed
+explanation of the various git-log options which may be useful here, is beyond
+the scope of this usage output, however a few examples are provided below.
+
+Examples:
+; check only the most recent commit, and stop if it fails.
+    git find-base -- -1 HEAD < "mbox-file"
+; check the most recent commit of a branch
+    git find-base -- -1 branch < "mbox-file"
+; check commits between two branches
+    git find-base -- master..devel < "mbox-file"
+
+Essentially, the arguments are passed to generate a list of commit objects to
+check, and you can use the powerful options in git-log to craft this list to
+what you want to check against.
+
+The tool works by checking index information, and will return the first commit
+from git-log for which the mbox passed has matching initial index information.
+This means that the mbox *will* apply cleanly to that patch, because it has
+exact initial index as it expected. It does *not* require that the patch be
+based exactly on the commit that was supplied, but only that the files it
+modified are exactly what it thought.
+
+Warnings and errors are printed to the standard error, and the only output to
+standard out will be a single commit id. If nothing was found, no standard
+output will be generated, and this utility will exit with a non-zero exit code.
+
+Options:
+    -k, --keep  Keep duplicate diff chunks.
+    -?, -h      Show this text and exit.
+END
+}
+
+sub match_index {
+    my ($x, $y) = @_;
+
+    return ( index $x,$y ) == 0 or ( index $y,$x ) == 0;
+}
+
+sub hash_comp(\%\%) {
+    my %x = %{ shift @_ };
+    my %y = %{ shift @_ };
+
+    ( grep { not ( ( exists $y{$_} ) and $x{$_} eq $y{$_} ) } keys %x ) == 0;
+}
+
+sub path_exists(\%$) {
+    my %tree = %{ shift @_ };
+    my $path = shift @_;
+
+    return exists $tree{$path} and $tree{$path}->{status} eq "";
+}
+
+my $duplicates = '';
+
+Getopt::Long::Configure("pass_through");
+GetOptions('h|?' => sub { show_usage; exit 0; },
+           'keep!' => \$duplicates );
+
+# Slurp the contents into $mbox for processing
+my $mbox = do { local $/; <STDIN> };
+
+# Array of hrefs to chunk contexts
+my @chunks = ();
+
+# The possible list of extended headers supported by git-diff output
+my $extended_headers = qr/(old mode|new mode|deleted file mode|new file mode|copy from|copy to|rename from|rename to|similarity index|dissimilarity index|index)/;
+
+# Split mbox apart by diff header chunks, finding a diff line followed by any number of extended header lines
+while ($mbox =~ /^(?<chunk>diff (?s:.*?))(?=^(?!$extended_headers))/gm) {
+
+    # Capture the block
+    my $rawchunk = $+{chunk};
+
+    print STDERR "Found a diff chunk\n";
+    print STDERR $rawchunk;
+
+    # Check whether it has expected format
+    if ( $rawchunk =~ /^diff --git [iwcoab]\/(?<oldpath>\S+) [iwcoab]\/(?<newpath>\S+)$/m ) {
+        # We have a standard git diff chunk. Now, we need to parse the extended
+        # headers from the section.
+
+        my %chunk = ();
+        $chunk{oldpath} = $+{oldpath};
+        $chunk{newpath} = $+{newpath};
+        $chunk{oldindex} = "";
+        $chunk{newindex} = "";
+        $chunk{action} = "none";
+
+        if ( $rawchunk =~ /^index (?<oldindex>[0-9a-fA-F]+)[.]{2}(?<newindex>[0-9a-fA-F]+)( (?<mode>[0-7]{6}))?$/m ) {
+            $chunk{oldindex} = $+{oldindex};
+            $chunk{newindex} = $+{newindex};
+            $chunk{oldmode} = $+{mode};
+            $chunk{newmode} = $+{mode};
+        }
+
+
+        if ( $rawchunk =~ /^old mode (?<mode>[0-7]{6})$/m ) {
+            $chunk{oldmode} = $+{mode};
+        }
+
+        if ( $rawchunk =~ /^new mode (?<mode>[0-7]{6})$/m ) {
+            $chunk{newmode} = $+{mode};
+        }
+
+        if ( $rawchunk =~ /^deleted file mode (?<mode>[0-7]{6})$/m ) {
+            $chunk{oldmode} = $+{mode};
+            $chunk{action} = "delete";
+        }
+
+        if ( $rawchunk =~ /^new file mode (?<mode>[0-7]{6})$/m ) {
+            $chunk{newmode} = $+{mode};
+            $chunk{action} = "create";
+        }
+
+        if ( $rawchunk =~ /^rename from \Q$chunk{oldpath}\E$/m ) {
+            $chunk{action} = "rename";
+        }
+
+        if ( $rawchunk =~ /^rename to \Q$chunk{newpath}\E$/m ) {
+            $chunk{action} = "rename";
+        }
+
+        if ( $rawchunk =~ /^similarity index (?<similarity>[0-9]{1,3}%)$/m ) {
+            $chunk{similarity} = $+{similarity};
+        }
+
+        if ( $rawchunk =~ /^dissimilarity index (?<dissimilarity>[0-9]{1,3}%)$/m ) {
+            $chunk{similarity} = 100 - $+{dissimilarity};
+        }
+
+        if ( not $duplicates and ( grep { hash_comp ( %$_, %chunk ) } @chunks ) > 0 ) {
+            print STDERR "Skipping duplicate diff chunk. Disable this behavior with --keep.\n";
+        } else {
+            push (@chunks, \%chunk);
+        }
+
+    } elsif ( $rawchunk =~ /^diff --(combined|cc) (?<newfile>\S+)$/m ) {
+        # We can't use combined diff formats, since these are used for multiple
+        # parents, and are not suitable for this process
+        print STDERR "Found a combined diff format, indicating a merge. We can't find a base commit for a merge!\n";
+        exit 1;
+    } else {
+        # Non git-formats are not supported, as we need the index information
+        print STDERR "Found a diff chunk, but it does not have a recognized format.\n";
+        exit 1;
+    }
+}
+
+# We have collated all the chunks. Now we need to loop over a series of commits
+# based on user input. For each commit, we will try to build up the list of
+# changes and see if it is applicable.
+sub check_commit {
+    my ( $commit ) = @_;
+
+    # Our current view of the tree
+    my %tree = ();
+
+    # For each chunk, we need to build up the tree. looking up from git-ls-tree
+    # for the first time we find a path. We want to see if our patch could cleanly apply to the given commit.
+    for my $chunk ( @chunks ) {
+
+        # If the path doesn't exist yet, just fill in some information about it
+        # from the real tree
+        if ( not exists $tree{$chunk->{oldpath}} ) {
+            open my $ls_tree, '-|', 'git', => 'ls-tree' => '--full-tree' => $commit => '--' => $chunk->{oldpath}
+                or die "Couldn't open pipe to git-ls-tree: ", $!;
+
+            my $ls_tree_output = <$ls_tree>;
+            close $ls_tree or do {
+                print STDERR "git-ls-tree failed: ", $? >> 8;
+                return 0;
+            };
+
+            # Only add the tree object if we actually have output
+            if ( defined $ls_tree_output ) {
+                chomp $ls_tree_output;
+                $ls_tree_output =~ /\A([0-7]{6}) (blob|tree|commit) (\S+)/ or do {
+                    print STDERR "Unexpected git-ls-tree output.\n";
+                    return 0;
+                };
+
+                $tree{$chunk->{oldpath}} = {
+                    mode => $1,
+                    index => $3,
+                    status => "",
+                };
+            }
+        }
+
+        # We have now added any known information about this path to the tree.
+        # We will now attempt to modify the tree based on the contents of the
+        # chunk.
+
+        if ( $chunk->{action} eq "create" ) {
+            if ( path_exists( %tree, $chunk->{oldpath} ) ) {
+                # This path already exists, so we can't add it!
+                print STDERR "$chunk->{oldpath} already exists.\n";
+                return 0;
+            } else {
+                # We found a patch that either doesn't exist, or is already
+                # been renamed or deleted. We can simply add it here now.
+                $tree{$chunk->{oldpath}}->{mode} = $chunk->{mode};
+                $tree{$chunk->{oldpath}}->{index} = $chunk->{newindex};
+                $tree{$chunk->{oldpath}}->{status} = "";
+            }
+        } else {
+            if ( not path_exists( %tree, $chunk->{oldpath} ) ) {
+                # This path no longer exists, we can't modify it.
+                print STDERR "$chunk->{oldpath} does not exist.\n";
+                return 0;
+            } else {
+                if ( not match_index( $tree{$chunk->{oldpath}}->{index}, $chunk->{oldindex} ) ) {
+                    print STDERR "$chunk->{oldpath} does not have matching index.\n";
+                    return 0;
+                }
+
+                if ( $chunk->{newindex} ) {
+                    $tree{$chunk->{oldpath}}->{index} = $chunk->{newindex};
+                }
+
+                if ( $chunk->{newmode} ) {
+                    $tree{$chunk->{oldpath}}->{mode} = $chunk->{newmode};
+                }
+
+                # Handle special case here for rename and delete actions
+                if ( $chunk->{action} eq "rename" ) {
+                    if ( path_exists( %tree, $chunk->{newpath} ) ) {
+                        print STDERR "$chunk->{newpath} already exists.\n";
+                        return 0;
+                    }
+
+                    $tree{$chunk->{newpath}} = $tree{$chunk->{oldpath}};
+                    $tree{$chunk->{oldpath}}->{status} = "renamed";
+                } elsif ( $chunk->{action} eq "delete" ) {
+                    $tree{$chunk->{oldpath}}->{status} = "deleted";
+                }
+            }
+        }
+    }
+
+    # If we get here, that means we had no issues verifying each chunk, and we
+    # can exit true.
+    return 1;
+}
+
+# Open the git-log pipe. Pass all of our ARGV directly to the rev-list command.
+open my $log, '-|', 'git' => 'log' => @ARGV => '--pretty=%H'
+    or die "Couldn't open pipe to git-log: ", $!;
+
+# Loop through each commit in the list, checking if the diff chunks can apply
+# cleanly to the commit. Easily allow modifying which commits are checked via
+# options to the git-log command, which allows limiting what can be checked.
+while ( <$log> ) {
+    chomp;
+
+    if (check_commit $_) {
+        # Print the commit hash we found, and exit with a good return status.
+        print "$_\n";
+        exit 0;
+    }
+}
+
+# We failed to find a commit, so exit 1
+print STDERR "Failed to find matching base commit.\n";
+exit 1;

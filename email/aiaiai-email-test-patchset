@@ -4,8 +4,8 @@
 # Author: Artem Bityutskiy
 # License: GPLv2
 
-srcdir="$(readlink -ev -- ${0%/*}/..)"
-PATH="$srcdir:$srcdir/helpers:$srcdir/email:$srcdir/helpers/libshell:$PATH"
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir:$srcdir/..:$srcdir/../helpers:$srcdir/../helpers/libshell:$PATH"
 
 . shell-error
 . shell-args
@@ -35,19 +35,6 @@ The mbox file containing the patches to test is expected to come from stdin
 
 Options:
   -i, --input=MBOX       use the MBOX file instead of stdin;
-  -C, --confdir=CDIR     path to the directory containing the defconfig files
-                         (those you specify in the config file); by default the
-                         defconfig files are assumed to be part of the
-                         <kernel-tree>; this option makes it possible to use
-                         stand-alone defconfig files instead;
-  -p, --preserve         preserve all the temporary files - do not clean up;
-      --test-mode        test mode - work as usually, but do not actually
-                         send replies;
-      --bisectability    test bisectability;
-      --sparse           check with sparse while building;
-      --smatch           check with smatch while building;
-      --cppcheck         check with cppcheck;
-      --coccinelle       check with coccinelle;
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
 EOF
@@ -60,7 +47,6 @@ fail_usage()
 	exit 1
 }
 
-preserve=
 verbose=
 mbox=
 tmpdir=
@@ -68,7 +54,7 @@ cleanup_handler()
 {
 	rm $verbose -rf -- "$mbox" >&2
 
-	if [ -n "$preserve" ]; then
+	if [ "$cfg_preserve_files" = "1" ]; then
 		verbose "Preserved tmpdir: $tmpdir"
 	else
 		[ -z "$tmpdir" ] || verbose "Removing $tmpdir";
@@ -82,14 +68,22 @@ list_projects()
 {
 	local prj
 
-	LC_ALL=C sed -n -e "s/^\[prj_\(.*\)\]$/\1/p" "$cfgfile" | \
-	    while read -r prj; do
+	get_cfgfile_projects_list "$cfgfile" | \
+	while read -r prj; do
 		# Get project description
 		local descr
 		ini_config_get_or_die descr "$cfgfile" "prj_$prj" "description"
-
 		local email="$cfg_ownmail_local+$prj@$cfg_ownmail_domain"
-		printf "* %s\n" "$prj ($email): $descr"
+
+		# If given a url, display a sample clone line in the project
+		url="$(ini_config_get "$cfgfile" "prj_$prj" "canonical_url")"
+		branch="$(ini_config_get "$cfgfile" "prj_$prj" "branch")"
+
+		if [ -n "$url" ]; then
+			printf "* %s\n" "$prj ($email) [git clone -b $branch $url]: $descr"
+		else
+			printf "* %s\n" "$prj ($email): $descr"
+		fi
 	done
 }
 
@@ -101,10 +95,10 @@ send_email()
 
 	[ -z "$verbose" ] || cat -- "$tmpdir/mail" >&2
 
-	if [ -z "$test_mode" ]; then
+	if [ "$cfg_disable_notifications" != "1" ]; then
 		mutt -x -H "$tmpdir/mail" </dev/null
 	else
-		verbose "Do not actually send the email - we are in test mode"
+		verbose "Email nofications have been disabled in the configuration file"
 	fi
 }
 
@@ -117,6 +111,23 @@ error_no_project_specified()
 Sorry, but you have not specified the project name. Please, specify it
 using the "+" symbol in the e-mail address of $cfg_ownname. For example,
 "$cfg_ownmail_local+XYZ@$cfg_ownmail_domain" would mean project "XYZ".
+
+List of projects $cfg_ownname supports:
+
+$(list_projects)
+
+Please, contact "$cfg_adminname" <$cfg_adminmail>
+if you have any questions.
+EOF
+	exit 0
+}
+
+# This function is called when a hook has requested discarding a patch, and
+# should be passed the main body content from the hook output as stdin.
+error_hook_rejected_patch()
+{
+	send_email <<EOF
+$(cat)
 
 List of projects $cfg_ownname supports:
 
@@ -144,10 +155,10 @@ EOF
 	exit 0
 }
 
-# This function is called when the 'aiaiai-test-patchest' fails. This most
-# probably means a bug or configuration issues. This function sends
-# corresponding e-mail notification.
-error_test_patchset_failed()
+# This function is called when an internal error occurs, such as when
+# aiaiai-test-patchset fails. This most probably means a bug or configuration
+# issue occurred. This function sends a corresponding email notification.
+error_internal_error_occurred()
 {
 	send_email <<EOF
 Sorry, but an internal $cfg_ownname error happened. Please, contact
@@ -186,49 +197,17 @@ $(cat -- $tmpdir/test-patchset.log)
 EOF
 }
 
-TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long test-mode,input:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o i:,C:,p,v,h --long input:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
 mbox=
-confdir=
-test_mode=
-bisectability=
-sparse=
-smatch=
-cppcheck=
-coccinelle=
 
 while true; do
 	case "$1" in
 	-i|--input)
 		mbox="$(opt_check_read "$1" "$2")"
 		shift
-		;;
-	-C|--confdir)
-		confdir="$(opt_check_dir "$1" "$2")"
-		shift
-		;;
-	-p|--preserve)
-		preserve="--preserve"
-		;;
-	--test-mode)
-		test_mode=y
-		;;
-	--bisectability)
-		bisectability="--bisectability"
-		;;
-	--sparse)
-		sparse="--sparse"
-		;;
-	--smatch)
-		smatch="--smatch"
-		;;
-	--cppcheck)
-		cppcheck="--cppcheck"
-		;;
-	--coccinelle)
-		coccinelle="--coccinelle"
 		;;
 	-v|--verbose) verbose=-v
 		;;
@@ -244,14 +223,15 @@ while true; do
 	shift
 done
 
-[ "$#" -eq 1 ] || die "Insufficient or too many arguments"
+[ "$#" -eq 1 ] || fail_usage "Insufficient or too many arguments"
 
 program_required "mutt" ""
 program_required "grep" ""
 program_required "sed" ""
 program_required "formail" ""
 
-cfgfile="$1"; shift
+cfgfile="$(readlink -fv -- "$1")"; shift
+parse_config "$cfgfile"
 
 # Save the mbox to a temporary file if it comes from stdin
 if [ -z "$mbox" ]; then
@@ -259,9 +239,8 @@ if [ -z "$mbox" ]; then
 	cat > "$mbox"
 fi
 
-cat "$mbox"
 # Use the cover letter subject and message ID if possible. If the cover letter
-# was present, 'aiaiai-email-lda' would save them in special privat headers.
+# was present, 'aiaiai-email-lda' would save them in special private headers.
 subj="$(fetch_header "X-Aiaiai-Cover-Letter-Subject" < "$mbox")"
 [ -n "$subj" ] || fetch_header_or_die subj "Subject" < "$mbox"
 
@@ -286,17 +265,13 @@ printf "\n"
 verbose "Testing mbox: \"$from: $subj (Message-Id: $id)\""
 verbose "parsing config file \"$cfgfile\""
 
-parse_config "$cfgfile"
-
 mkdir $verbose -p -- "$cfg_workdir" >&2
 
 tmpdir="$(mktemp --tmpdir="$cfg_workdir" -dt "$PROG.XXXX")"
 mv $verbose -- "$mbox" "$tmpdir/mbox" >&2
 mbox="$tmpdir/mbox"
-
-# Find out the project name
-prj="$(fetch_project_name "$to" "$cfg_ownmail")"
-verbose "Project \"$prj\""
+hookoutput="$tmpdir/hook"
+touch -- "$hookoutput"
 
 # Replies will refer the first patch of the patch-set under test
 reply_subj="$subj"
@@ -305,6 +280,37 @@ reply_id="$id"
 reply_to="$from"
 # And do not Cc anyone thus far
 reply_cc=
+
+# Run the aiaiai email hook. Output is stored in $hookoutput and we can parse
+# this via fetch_header similar to how we parse the mbox.
+hookscript="$(readlink -ev -- $cfg_email_hook)"
+if [ -f "$hookscript" ] && [ -x "$hookscript" ]; then
+	# Hook points to an executable file, so we run it
+	verbose "Executing \"$hookscript\""
+
+	# Grab the error code here, using an || section to prevent exit on
+	# command failure. Otherwise, the non-zero exit code from the hook
+	# script would crash aiaiai-email-test-patchset
+	hookret="0"
+	"$hookscript" "$cfgfile" "$mbox" > "$hookoutput" || hookret="$?"
+
+	# Error code 127 is an expected output of the hook, and
+	# indicates that we should reject this patch. The reply email
+	# will be sent to the user, and the hook is expected to have
+	# outputted the rejection indication. As a precaution, the
+	# rejection email will include a list of projects supported.
+	if [ "$hookret" -eq "127" ]; then
+		error_hook_rejected_patch < "$hookoutput"
+	elif [ "$hookret" -ne "0" ]; then
+		verbose "Hook exited with error code \"$hookret\"..."
+		error_internal_error_occurred
+	fi
+fi
+
+# Find out the project name
+prj="$(fetch_header "X-Aiaiai-Project" < "$hookoutput")"
+[ -n "$prj" ] || prj="$(fetch_project_name "$to" "$cfg_ownmail")"
+verbose "Project \"$prj\""
 
 # Reject the e-mail if the project has not been specified
 if [ -z "$prj" ]; then
@@ -319,11 +325,21 @@ if [ -z "$pcfg_name" ]; then
 	error_project_not_found
 fi
 
+bisectability=
+sparse=
+smatch=
+cppcheck=
+coccinelle=
+[ "$pcfg_bisectability" != "1" ] || bisectablity="--bisectability"
+[ "$pcfg_sparse" != "1" ] || sparse="--sparse"
+[ "$pcfg_smatch" != "1" ] || smatch="--smatch"
+[ "$pcfg_cppcheck" != "1" ] || cppcheck="--cppcheck"
+[ "$pcfg_coccinelle" != "1" ] || coccinelle="--coccinelle"
+
 # Create the Cc list for replies that we'll be sending
 if [ "$pcfg_reply_to_all" = "1" ]; then
 	# All the patch recipients will be CCed
-	reply_cc="$(merge_addresses "$to" "$cc")"
-	reply_cc="$(merge_addresses "$reply_cc" "$pcfg_always_cc")"
+	reply_cc="$(merge_addresses "$to" "$cc" "$pcfg_always_cc")"
 	reply_cc=$(strip_address "$reply_cc" "$cfg_ownmail")
 else
 	reply_cc="$pcfg_always_cc"
@@ -335,18 +351,22 @@ if [ "$pcfg_accept_notify" = "1" ]; then
 	send_accepted_email
 fi
 
+# Use the supplied commit from the hook or default to branch head
+commit="$(fetch_header "X-Aiaiai-Commit" < "$hookoutput")"
+[ -n "$commit" ] || commit="$pcfg_branch"
+
 # Test the path (or patch-set)
 verbose "Test configs \"$pcfg_configs\" branch \"$pcfg_branch\" of \"$pcfg_path\""
-aiaiai-test-patchset $verbose $preserve \
-	$bisectability $sparse $smatch $cppcheck $coccinelle \
-	-i "$mbox" -j "$cfg_jobs" -c "$pcfg_branch" -w "$tmpdir" \
-	${confdir:+-C "$confdir"} \
-	${pcfg_unwanted_keywords:+-K "$pcfg_unwanted_keywords"} -- \
-	${pcfg_kmake_opts:+-M "$pcfg_kmake_opts"} \
+aiaiai-test-patchset $verbose ${cfg_preserve_files:+--preserve} \
+	${pcfg_targets:+--targets "$pcfg_targets"} $bisectability $sparse $smatch $cppcheck $coccinelle \
+	-i "$mbox" -j "$cfg_jobs" -c "$commit" -w "$tmpdir" \
+	${pcfg_defconfigdir:+-C "$pcfg_defconfigdir"} \
+	${pcfg_unwanted_keywords:+-K "$pcfg_unwanted_keywords"} \
+	${pcfg_kmake_opts:+-M "$pcfg_kmake_opts"} -- \
 	"$pcfg_path" "$pcfg_configs" > "$tmpdir/test-patchset.log" ||
 {
 	verbose "aiaiai-test-patchset failed"
-	error_test_patchset_failed
+	error_internal_error_occurred
 }
 
 # Mail the results of testing

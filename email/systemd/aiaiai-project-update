@@ -1,0 +1,93 @@
+#!/bin/sh -efu
+
+# Copyright 2014 Intel Corporation
+# Author: Jacob Keller
+# License: GPLv2
+
+# Run git-remote-update for each unique repository in the aiaiai cfg file
+
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir/../..:$srcdir/../../email:$srcdir/../../helpers:$srcdir/../../helpers/libshell:$PATH"
+
+. shell-error
+. shell-args
+. shell-signal
+. aiaiai-sh-functions
+. aiaiai-email-sh-functions
+
+PROG="${0##*/}"
+export message_time="yes"
+
+if can_switch_to_dash; then
+	exec dash -euf -- "$srcdir/$PROG" "$@"
+	exit $?
+fi
+
+# Find all unique repository locations. This helps prevent updating a
+# repository multiple times.
+find_unique_repositories()
+{
+	local cfgfile="$1"; shift
+
+	get_cfgfile_projects_list "$cfgfile" | \
+	while read -r prj; do
+		ini_config_get_or_die path "$cfgfile" "prj_$prj" "path"
+		printf "%s\n" "$path"
+	done | sort -u
+}
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] <cfgfile.ini>
+
+The configuration file passed by the argument is parsed for projects. Then,
+git-remote-update is run on each project.
+
+<cfgfile.ini>      - the configuration file.
+
+Options:
+  -v, --verbose    be verbose;
+  -h, --help       show this text and exit.
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+verbose=
+TEMP=`getopt -n $PROG -o v,h --long verbose,help -- "$@"` ||
+	fail_usage ""
+eval set -- "$TEMP"
+
+while true; do
+	case "$1" in
+	-v|--verbose)
+		verbose=-v
+		;;
+	-h|--help)
+		show_usage
+		exit 0
+		;;
+	--) shift; break
+		;;
+	*) fail_usage "Unrecognized option: $1"
+		;;
+	esac
+	shift
+done
+
+[ "$#" -eq 1 ] || fail_usage "Insufficient or too many arguments"
+cfgfile="$(readlink -fv -- "$1")"; shift
+parse_config "$cfgfile"
+
+find_unique_repositories "$cfgfile" | \
+while read -r repo; do
+	verbose "Updating $repo"
+
+	git --git-dir="$(git_dir "$repo")" remote update
+done

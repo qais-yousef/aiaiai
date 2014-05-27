@@ -4,14 +4,15 @@
 # Author: Artem Bityutskiy
 # License: GPLv2
 
-srcdir="$(readlink -ev -- ${0%/*}/..)"
-PATH="$srcdir/helpers:$srcdir/email:$srcdir/helpers/libshell:$PATH"
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir:$srcdir/..:$srcdir/../helpers:$srcdir/../helpers/libshell:$PATH"
 
 echo $PATH
 . shell-error
 . shell-args
 . shell-signal
 . aiaiai-sh-functions
+. aiaiai-email-sh-functions
 
 PROG="${0##*/}"
 message_time="yes"
@@ -26,17 +27,17 @@ fi
 show_usage()
 {
 	cat <<-EOF
-Usage: $PROG [options] <queuedir> <validator>
+Usage: $PROG [options] <queuedir> <cfgfile.ini>
 
 This program dispatches the incoming queue of patches in the <queuedir>
-directory and runs the <validator> program for each patch (or patch series).
-Patches are supposed to be in mbox format.
+directory and runs the aiaiai-email-test-patchset program for each patch (or
+patch series). Patches are supposed to be in mbox format. <cfgfile.ini> is used
+for general configuration of aiaiai-email-test-patchset.
 
 <queuedir>         - the directory containing the queue of patches
-<validator>        - the validation command.
+<cfgfile.ini>      - aiaiai-email-test-patchset's configuration file
 
 Options:
-  -J, --bigjobs=N    how many validators can be run at the same time (default 1);
   -v, --verbose      be verbose;
   -h, --help         show this text and exit.
 EOF
@@ -95,18 +96,12 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o J:,v,h --long bigjobs:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o J:,v,h --long verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
-bigjobs=1
-
 while true; do
 	case "$1" in
-	-J|--bigjobs)
-		bigjobs="$(opt_check_number "$1" "$2")"
-		shift
-		;;
 	-v|--verbose) verbose="--verbose"
 		;;
 	-h|--help)
@@ -121,7 +116,7 @@ while true; do
 	shift
 done
 
-[ "$#" -eq 2 ] || die "Insufficient or too many arguments"
+[ "$#" -eq 2 ] || fail_usage "Insufficient or too many arguments"
 
 program_required "inotifywait" ""
 
@@ -129,7 +124,9 @@ program_required "inotifywait" ""
 
 mkdir $verbose -p -- "$1" 1>&2
 queuedir="$(readlink -fv -- "$1")"; shift
-validator="$1"; shift
+cfgfile="$1"; shift
+
+parse_config "$cfgfile"
 
 in_fifo="$(mktemp -dt "$PROG.in_fifo.XXXX")"
 tmpdir="$(mktemp -dt "$PROG.tmpdir.XXXX")"
@@ -142,10 +139,10 @@ mkfifo -- "$fifo"
 # -P option of xargs provides us the parallelism.
 #
 # We execute the below command as a separate process - it will run the
-# validator for every file name read from the fifo.
-tail -f -- "$fifo" | xargs -I{} -P"$bigjobs" -- \
+# aiaiai-email-test-patchset for every file name read from the fifo.
+tail -f -- "$fifo" | xargs -I{} -P"$cfg_max_validators" -- \
 	aiaiai-email-dispatcher-helper $verbose -- "$in_fifo/{}" "$tmpdir/STOP" \
-				      "$queuedir" "$validator" >&2 &
+				      "$queuedir" "$cfgfile" >&2 &
 
 # Loop forever, wait for new files in the queue directory using inotify and
 # validate them

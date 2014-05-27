@@ -165,7 +165,7 @@ while true; do
 	shift
 done
 
-[ "$#" = 3 ] || die "Insufficient or too many arguments"
+[ "$#" = 3 ] || fail_usage "Insufficient or too many arguments"
 
 
 compile_helpers "$srcdir"

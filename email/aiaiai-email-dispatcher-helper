@@ -4,12 +4,13 @@
 # Author: Artem Bityutskiy
 # License: GPLv2
 
-srcdir="$(readlink -ev -- ${0%/*}/..)"
-PATH="$srcdir/helpers:$srcdir/email:$srcdir/libshell:$PATH"
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir:$srcdir/..:$srcdir/../helpers:$srcdir/../helpers/libshell:$PATH"
 
 . shell-error
 . shell-signal
 . aiaiai-sh-functions
+. aiaiai-email-sh-functions
 
 PROG="${0##*/}"
 message_time="yes"
@@ -24,22 +25,22 @@ fi
 show_usage()
 {
 	cat <<-EOF
-Usage: $PROG [options] <mbox> <fail_file> <queuedir> <validator>
+Usage: $PROG [options] <mbox> <fail_file> <queuedir> <cfgfile.ini>
 
-This is a helper program which runs the <validator> program for the
-<mbox> file. If the validator returns success - just exit. Otherwise
-it moves the <mbox> file back to the <queuedir> directory and create
+This is a helper program which runs the aiaiai-email-test-patchset program for
+the <mbox> file. If aiaiai-email-test-patchset returns success - just exit.
+Otherwise it moves the <mbox> file back to the <queuedir> directory and create
 file <fail_file>.
 
-The validator program should return failure only in case of internal
-bug or error, and not if any test on the patch <mbox> failed. So the
-reason we move <mbox> back to the queue is to make sure we do not
-lose the patch in case of an internal bug.
+aiaiai-email-test-patchset will return failure only in case of internal bug or
+error, and not if any test on the patch <mbox> failed. So the reason we move
+<mbox> back to the queue is to make sure we do not lose the patch in case of an
+internal bug.
 
-<mbox>             - the mbox file to feed to the <validator>
+<mbox>             - the mbox file to feed to aiaiai-email-test-patchset
 <fail_file>        - the file to create in case of failure
 <queuedir>         - the directory containing the queue of patches
-<validator>        - the validation command.
+<cfgfile.ini>      - aiaiai-email-test-patchset's configuration
 
 Options:
   -v, --verbose      be verbose;
@@ -83,22 +84,25 @@ while true; do
 	shift
 done
 
-[ "$#" -eq 4 ] || die "Insufficient or too many arguments"
+[ "$#" -eq 4 ] || fail_usage "Insufficient or too many arguments"
 
 mbox="$(readlink -fv -- "$1")"; shift
 fail_file="$1"; shift
 queuedir="$(readlink -fv -- "$1")"; shift
-validator="$1"; shift
+cfgfile="$1"; shift
+
+# Parse the configuration file
+parse_config "$cfgfile"
 
 tmpdir="$(mktemp -dt "$PROG.XXXX")"
 
 verbose "Validating \"$mbox\", queue directory is: $queuedir"
-verbose "Validator command: $validator"
+verbose "Configuration file: $cfgfile"
 
 mv $verbose -- "$mbox" "$tmpdir" >&2
 file="$tmpdir/${mbox##*/}"
 
-if ! cat -- "$file" | eval "$validator"; then
+if ! cat -- "$file" | aiaiai-email-test-patchset "$verbose" "$cfgfile"; then
 	verbose "Validation failed"
 	touch -- "$fail_file"
 	mv $verbose -- "$file" "$queuedir" >&2

@@ -86,6 +86,7 @@ Options:
                          an mbox file with quick fixes which will be applied
                          first and the user patch-set will be tested on top of
                          the fixes;
+      --targets          list of make targets to build (defaults to all)
   -K  --keywords=FILE    match keywords from FILE against the patch;
   -M, --kmake-opts       additional options to append to the final kernel
                          compilation 'make' command
@@ -189,7 +190,7 @@ test_configuration()
 	aiaiai-make-kernel $verbose $sparse $smatch $cppcheck $coccinelle -o "$obj1" \
 		--check-only "$mod_files" -j "$jobs" $arch_opt -D "$defconfig" \
 		-O "$log1.stdout.log" -E "$log1.stderr.log" --keep-going \
-		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel1" all
+		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel1" "$targets"
 
 	verbose "Done with non-patched kernel"
 
@@ -211,7 +212,7 @@ test_configuration()
 	aiaiai-make-kernel $verbose $sparse $smatch $cppcheck $coccinelle -o "$obj2" \
 		--check-only "$mod_files" -j "$jobs" $arch_opt -D "$defconfig" \
 		-O "$log2.stdout.log" -E "$log2.stderr.log" \
-		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel2" all
+		${kmake_opts:+-M "$kmake_opts"} -- "$cloned_kernel2" "$targets"
 
 	verbose "Done with patched kernel"
 
@@ -238,7 +239,7 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,Q:,K:,M:,v,h --long jobs:,commit-id:,input:,workdir:,logdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,quick-fixes:,keywords:,kmake-opts:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o j:,c:,i:,w:,C:,p,Q:,K:,M:,v,h --long jobs:,commit-id:,input:,workdir:,logdir:,confdir:,preserve,bisectability,sparse,smatch,cppcheck,coccinelle,quick-fixes:,targets:,keywords:,kmake-opts:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
@@ -253,6 +254,7 @@ smatch=
 cppcheck=
 coccinelle=
 quick_fixes=
+targets="all"
 keywords=
 kmake_opts=
 verbose=
@@ -288,10 +290,6 @@ while true; do
 	-p|--preserve)
 		preserve="--preserve"
 		;;
-	-Q|--quick-fixes)
-		quick_fixes="$(opt_check_read "$1" "$2")"
-		shift
-		;;
 	--bisectability)
 		bisectability="--bisectability"
 		;;
@@ -310,6 +308,14 @@ while true; do
 	--coccinelle)
 		coccinelle="yes"
 		program_required "spatch" "Usually Linux distribution provide a 'spatch' or 'coccinelle' package"
+		;;
+	-Q|--quick-fixes)
+		quick_fixes="$(opt_check_read "$1" "$2")"
+		shift
+		;;
+	--targets)
+		targets="$2"
+		shift
 		;;
 	-K|--keywords)
 		keywords="$(opt_check_read "$1" "$2")"
@@ -335,7 +341,7 @@ while true; do
 	shift
 done
 
-[ "$#" -ge 2 ] || die "Insufficient arguments"
+[ "$#" -ge 2 ] || fail_usage "Insufficient arguments"
 
 kernel_tree="$(readlink -ev -- "$1")"; shift
 defconfigs="$@"

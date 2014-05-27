@@ -4,6 +4,7 @@
 # Author: Artem Bityutskiy
 # License: GPLv2
 
+. shell-args
 . shell-error
 . shell-ini-config
 . shell-quote
@@ -134,33 +135,114 @@ ini_config_get_or_die()
 	eval "$var=\"\$result\""
 }
 
-# Parse the "global" and "email" sections of the config file. The result is a
-# set of per-option variables and their values are exactly as in the
-# configuration file:
+# Get the list of projects from config file "$1".
+get_cfgfile_projects_list()
+{
+	local cfgfile="$1"
+
+	LC_ALL=C sed -n -e "s/^\[prj_\(.*\)\]$/\1/p" "$cfgfile"
+}
+
+# Like opt_check_number, except doesn't fail on empty number.
+# Arguments: $1 is config name, $2 is config value.
+# If $2 is a positive decimal, outputs it, otherwise fails.
+config_check_number()
+{
+	if [ -n "$2" ]; then
+		[ -n "${2##0*}" -a -n "${2##*![0-9]*}" ] &&
+		[ "$2" -gt 0 ] 2>/dev/null ||
+			fatal "$1: $2: invalid number."
+	fi
+	printf %s "$2"
+}
+
+
+# Like opt_check_file, except requires executable permissions
+# Arguments: $1 is config name, $2 is config value.
+# If $2 is an executable file, outputs canonicalized file name,
+# otherwise fails.
+config_check_exec()
+{
+	local value
+	[ -x "$2" ] &&
+	value="$(readlink -ev "$2")" ||
+		fatal "$1: $2: not an executable file."
+	printf %s "$value"
+}
+
+# Check whether config value is boolean. Empty string is considered false.
+# Arguments: $1 is config name, $2 is config value.
+# If $2 is a boolean value, output canonicalized value,
+# otherwise, fails.
+config_check_boolean()
+{
+	local value
+	value="$(echo "$2" | tr '[:upper:]' '[:lower:]')"
+
+	# Prefixing with _ makes it easier to catch empty string as false
+	case "_$value" in
+	_|_0|_false|no)
+		printf %s "0"
+		;;
+	_1|_true|yes)
+		printf %s "1"
+		;;
+	*)
+		fatal "$1: $2: not a boolean value."
+		;;
+	esac
+}
+
+# Parse the "global" section of the config file. The result is a set of
+# per-option variables and their values are exactly as in the configuration
+# file:
 #
 # cfg_ownname, cfg_ownmail, cfg_adminname, cfg_adminmail, cfg_workdir,
-# cfg_jobs, cfg_signature, cfg_built_preamble.
+# cfg_max_validators, cfg_jobs, cfg_preamble, cfg_signature,
+# cfg_built_preamble, cfg_disable_notifications, cfg_preserve_files,
+# and cfg_email_hook
 #
-# Additinally, the following variables are defined:
-#   o cfg_preamble - contains the email preamble read from the file definded
-#     in email.preamble variable
+# Additionally, the following variables are set:
+#  o cfg_ownmail_local - the local portion of the ownmail address
+#  o cfg_ownmail_domain - the domain portion of the ownmail address
+#  o cfg_preamble - the contents of the file pointed to by the preamble file
 #
 # Usage: parse_config <cfgfile>
 parse_config()
 {
 	local cfgfile="$1"
 
-	ini_config_get_or_die cfg_ownname   "$cfgfile" "global" "ownname"
-	ini_config_get_or_die cfg_ownmail   "$cfgfile" "global" "ownmail"
-	ini_config_get_or_die cfg_adminmail "$cfgfile" "global" "adminmail"
-	ini_config_get_or_die cfg_adminname "$cfgfile" "global" "adminname"
-	ini_config_get_or_die cfg_workdir   "$cfgfile" "global" "workdir"
-	ini_config_get_or_die cfg_jobs      "$cfgfile" "global" "jobs"
+	ini_config_get_or_die cfg_ownname        "$cfgfile" "global" "ownname"
+	ini_config_get_or_die cfg_ownmail        "$cfgfile" "global" "ownmail"
+	ini_config_get_or_die cfg_adminmail      "$cfgfile" "global" "adminmail"
+	ini_config_get_or_die cfg_adminname      "$cfgfile" "global" "adminname"
+	ini_config_get_or_die cfg_workdir        "$cfgfile" "global" "workdir"
+	cfg_workdir="$(opt_check_dir "workdir" "$cfg_workdir")"
+	ini_config_get_or_die cfg_max_validators "$cfgfile" "global" "max_validators"
+	cfg_max_validators="$(config_check_number "max_validators" "$cfg_max_validators")"
+	ini_config_get_or_die cfg_jobs           "$cfgfile" "global" "jobs"
+	cfg_jobs="$(config_check_number "jobs" "$cfg_jobs")"
+	ini_config_get_or_die cfg_preamble       "$cfgfile" "global" "preamble"
+	ini_config_get_or_die cfg_signature      "$cfgfile" "global" "signature"
+	ini_config_get_or_die cfg_built_preamble "$cfgfile" "global" "built_preamble"
 
-	ini_config_get_or_die cfg_signature      "$cfgfile" "email" "signature"
-	ini_config_get_or_die cfg_preamble       "$cfgfile" "email" "preamble"
-	ini_config_get_or_die cfg_built_preamble "$cfgfile" "email" "built_preamble"
+	# Get Email LDA settings
+	cfg_lda_reap_archive="$(ini_config_get "$cfgfile" "lda" "reap_archive")"
+	cfg_lda_reap_archive="$(config_check_number "reap_archive" "$cfg_lda_reap_archive")"
+	cfg_lda_reap_incomplete="$(ini_config_get "$cfgfile" "lda" "reap_incomplete")"
+	cfg_lda_reap_incomplete="$(config_check_number "reap_incomplete" "$cfg_lda_reap_incomplete")"
 
+	# Get the location of email hook(s)
+	cfg_email_hook="$(ini_config_get "$cfgfile" "hooks" "email")"
+	cfg_email_hook="$(config_check_exec "email" "$cfg_email_hook")"
+
+	# Debug options
+	cfg_disable_notifications="$(ini_config_get "$cfgfile" "debug" "disable_notifications")"
+	cfg_disable_notifications="$(config_check_boolean "disable_notifications" "$cfg_disable_notifications")"
+	cfg_preserve_files="$(ini_config_get "$cfgfile" "debug" "preserve_files")"
+	cfg_preserve_files="$(config_check_boolean "preserve_files" "$cfg_preserve_files")"
+
+	# Get the contents of the preamble file
 	cfg_preamble="$(cat "$cfg_preamble")"
 
 	# Get the local and domain parts of own e-mail address
@@ -168,15 +250,56 @@ parse_config()
 	cfg_ownmail_domain="$(printf "%s" "$cfg_ownmail" | LC_ALL=C sed "s/.*@//g")"
 }
 
+# Parse the "defaults" section of the config file. The result is a set of
+# per-option variables and their values are exactly as in the configuration
+# file:
+#
+# __dcfg_configs, __dcfg_always_cc, __dcfg_reply_to_all, __dcfg_accept_notify,
+# __dcfg_unwanted_keywords, __dcfg_kmake_opts, __dcfg_targets,
+# __dcfg_defconfigdir, __dcfg_bisectability, __dcfg_sparse, __dcfg_smatch,
+# __dcfg_cppcheck, __dcfg_coccinelle
+#
+# It is expected that this is used internally by the parse_prj_config and
+# should not normally be called outside of this file.
+#
+# Usage: _parse_defaults_config <cfgfile>
+__parse_default_config()
+{
+	local cfgfile="$1"; shift
+
+	__dcfg_configs="$(ini_config_get "$cfgfile" "defaults" "configs")"
+	__dcfg_always_cc="$(ini_config_get "$cfgfile" "defaults" "always_cc")"
+	__dcfg_reply_to_all="$(ini_config_get "$cfgfile" "defaults" "reply_to_all")"
+	__dcfg_accept_notify="$(ini_config_get "$cfgfile" "defaults" "accept_notify")"
+	__dcfg_unwanted_keywords="$(ini_config_get "$cfgfile" "defaults" "unwanted_keywords")"
+	__dcfg_kmake_opts="$(ini_config_get "$cfgfile" "defaults" "kmake_opts")"
+	__dcfg_targets="$(ini_config_get "$cfgfile" "defaults" "targets")"
+	__dcfg_defconfigdir="$(ini_config_get "$cfgfile" "defaults" "defconfigdir")"
+	__dcfg_bisectability="$(ini_config_get "$cfgfile" "defaults" "bisectability")"
+	__dcfg_sparse="$(ini_config_get "$cfgfile" "defaults" "sparse")"
+	__dcfg_smatch="$(ini_config_get "$cfgfile" "defaults" "smatch")"
+	__dcfg_cppcheck="$(ini_config_get "$cfgfile" "defaults" "cppcheck")"
+	__dcfg_coccinelle="$(ini_config_get "$cfgfile" "defaults" "coccinelle")"
+}
+
 # Similar to "parse_config", but parses a project configuration section. If the
 # project is found, the following variables are defined:
 #
-# cfg_name. pcfg_description, pcfg_path, pcfg_configs, pcfg_branch,
-# pcfg_reply_to_all, pcfg_accept_notify, pcfg_always_cc,
-# pcfg_unwanted_keywords, and pcfg_kmake_opts.
+# pcfg_name, pcfg_description, pcfg_path, pcfg_branch and pcfg_canonical_url.
+#
+# The following variables are defined, but receive default values from the
+# [defaults] section, if they are not specified in the project section:
+#
+# pcfg_configs, pcfg_always_cc, pcfg_reply_to_all, pcfg_accept_notify,
+# pcfg_unwanted_keywords, pcfg_kmake_opts, pcfg_targets, pcfg_defconfigdir,
+# pcfg_bisectability, pcfg_sparse, pcfg_smatch, pcfg_cppcheck, pcfg_coccinelle
 #
 # If the project is not found, this function only defined an empty "pcfg_name"
 # variable.
+#
+# Note, this function implicitly uses _parse_defaults_config to grab the
+# default configurations, and if the variable is not defined in the project
+# section, it will use the default value.
 #
 # Usage: parse_prj_config <cfgfile> <prj>
 parse_prj_config()
@@ -189,14 +312,63 @@ parse_prj_config()
 
 	ini_config_get_or_die pcfg_description   "$cfgfile" "prj_$prj" "description"
 	ini_config_get_or_die pcfg_path          "$cfgfile" "prj_$prj" "path"
-	ini_config_get_or_die pcfg_configs       "$cfgfile" "prj_$prj" "configs"
 	ini_config_get_or_die pcfg_branch        "$cfgfile" "prj_$prj" "branch"
-	ini_config_get_or_die pcfg_reply_to_all  "$cfgfile" "prj_$prj" "reply_to_all"
-	ini_config_get_or_die pcfg_accept_notify "$cfgfile" "prj_$prj" "accept_notify"
+	pcfg_canonical_url="$(ini_config_get "$cfgfile" "prj_$prj" "canonical_url")"
+
+	# The following options all take default value from the "defaults"
+	# section, and hence "override" those settings. First we need to populate those.
+	__parse_default_config "$cfgfile"
+
+	# ini_config_is_set is important here, so that defining a value as
+	# empty in the project section actually does define it as empty, rather
+	# than using the default. This allows defaults to only be used if the
+	# project config does not specify anything.
+	pcfg_configs="$(ini_config_get "$cfgfile" "prj_$prj" "configs")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "configs" || pcfg_configs="$__dcfg_configs"
+
+	pcfg_reply_to_all="$(ini_config_get "$cfgfile" "prj_$prj" "reply_to_all")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "reply_to_all" || pcfg_reply_to_all="$__dcfg_reply_to_all"
+	pcfg_reply_to_all="$(config_check_boolean "reply_to_all" "$pcfg_reply_to_all")"
+
+	pcfg_accept_notify="$(ini_config_get "$cfgfile" "prj_$prj" "accept_notify")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "accept_notify" || pcfg_accept_notify="$__dcfg_accept_notify"
+	pcfg_accept_notify="$(config_check_boolean "accept_notify" "$pcfg_accept_notify")"
 
 	pcfg_always_cc="$(ini_config_get "$cfgfile" "prj_$prj" "always_cc")"
-	pcfg_unwanted_keywords="$(ini_config_get "$cfgfile" ""prj_$prj"" "unwanted_keywords")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "always_cc" || pcfg_always_cc="$__dcfg_always_cc"
+
+	pcfg_unwanted_keywords="$(ini_config_get "$cfgfile" "prj_$prj" "unwanted_keywords")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "unwanted_keywords" || pcfg_unwanted_keywords="$__dcfg_unwanted_keywords"
+
 	pcfg_kmake_opts="$(ini_config_get "$cfgfile" "prj_$prj" "kmake_opts")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "kmake_opts" || pcfg_kmake_opts="$__dcfg_kmake_opts"
+
+	pcfg_targets="$(ini_config_get "$cfgfile" "prj_$prj" "targets")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "targets" || pcfg_targets="$__dcfg_targets"
+
+	pcfg_defconfigdir="$(ini_config_get "$cfgfile" "prj_$prj" "defconfigdir")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "defconfigdir" || pcfg_defconfigdir="$__dcfg_defconfigdir"
+	[ -z "$pcfg_defconfigdir" ] || pcfg_defconfigdir="$(opt_check_dir "defconfigdir" "$pcfg_defconfigdir")"
+
+	pcfg_bisectability="$(ini_config_get "$cfgfile" "prj_$prj" "bisectability")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "bisectability" || pcfg_bisectability="$__dcfg_bisectability"
+	pcfg_bisectability="$(config_check_boolean "bisectability" "$pcfg_bisectability")"
+
+	pcfg_sparse="$(ini_config_get "$cfgfile" "prj_$prj" "sparse")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "sparse" || pcfg_sparse="$__dcfg_sparse"
+	pcfg_sparse="$(config_check_boolean "sparse" "$pcfg_sparse")"
+
+	pcfg_smatch="$(ini_config_get "$cfgfile" "prj_$prj" "smatch")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "smatch" || pcfg_smatch="$__dcfg_smatch"
+	pcfg_smatch="$(config_check_boolean "smatch" "$pcfg_smatch")"
+
+	pcfg_cppcheck="$(ini_config_get "$cfgfile" "prj_$prj" "cppcheck")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "cppcheck" || pcfg_cppcheck="$__dcfg_cppcheck"
+	pcfg_cppcheck="$(config_check_boolean "cppcheck" "$pcfg_cppcheck")"
+
+	pcfg_coccinelle="$(ini_config_get "$cfgfile" "prj_$prj" "coccinelle")"
+	ini_config_is_set "$cfgfile" "prj_$prj" "coccinelle" || pcfg_coccinelle="$__dcfg_coccinelle"
+	pcfg_coccinelle="$(config_check_boolean "coccinelle" "$pcfg_coccinelle")"
 }
 
 # Compose (but not send) e-mail reply. This function assumes that the following

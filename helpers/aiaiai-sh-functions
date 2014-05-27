@@ -132,6 +132,24 @@ fetch_header_per_patch()
 	formail -s sh -c "formail -z -c -x \"$hdr:\" | head -n1" | aiaiai-decode-rfc-2047
 }
 
+# Insert a header into the given mbox file
+# Usage: insert_header <mbox_file> <header>
+insert_header()
+{
+	local mbox="$1"; shift
+	local header="$1"; shift
+
+	# The below trick allows us to avoid creating a separate temporary
+	# file; open the "$mbox" file, unlink, use the open file descriptor for
+	# reading and redirect the output to the new version of the "$mbox"
+	# file. We could instead use the "sponge" tool, however.
+	exec 3<$mbox
+	rm $verbose "$mbox" >&2
+	verbose "Adding \"$header\""
+	formail -s formail -I "$header" <&3 > "$mbox"
+	exec 3<&-
+}
+
 git_dir()
 {
 	local path="$1"
@@ -157,7 +175,7 @@ apply_patch()
 
 	cmt="$(git rev-parse "HEAD^{commit}")"
 
-	am="$(git am 2>&1)" || {
+	am="$(formail -s aiaiai-extract-patches | git am --3way 2>&1)" || {
 		cat <<EOF
 Failed to apply patch(es) with git am on top of:
 $(git log -1 --oneline "$cmt")
@@ -170,7 +188,7 @@ $(patch --merge=diff3 -p1 < .git/rebase-apply/patch 2>&1)
 
 $(print_separator)
 
-$(git diff --no-color)
+$(git diff --no-color | sed 's/^/> /')
 EOF
 		return 1
 	}

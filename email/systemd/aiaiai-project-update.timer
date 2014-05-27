@@ -1,0 +1,15 @@
+# Copyright 2014 Intel Corporation
+# Author: Jacob Keller
+# License: GPLv2
+[Unit]
+Description=Update aiaiai project repositories
+
+[Timer]
+# Wait for boot to finish
+OnBootSec=5min
+# Run every minute, so that we keep our trees updated
+OnUnitInactiveSec=1min
+Unit=aiaiai-project-update.service
+
+[Install]
+WantedBy=multi-user.target

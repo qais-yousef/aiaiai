@@ -58,7 +58,9 @@ Options:
       --check-only=FILE  check only files listed in FILE;
   -M, --kmake-opts       additional options to append to the final kernel
                          compilation 'make' command
-                         (e.g., W=2 KALLSYMS_EXTRA_PASS=1)
+                         (e.g., W=12 KALLSYMS_EXTRA_PASS=1)
+                         defaults to "KCFLAGS='-Wno-missing-field-initializers
+                          -Wno-sign-compare' W=1"
   -v, --verbose          be verbose;
   -h, --help             show this text and exit.
 EOF
@@ -118,8 +120,7 @@ make_target()
 		"make $keep_going -j $jobs -C $kernel_tree ${arch:+ARCH="$arch"} \
 		${cross:+CROSS_COMPILE="$cross"} ${objdir:+O="$objdir"} \
 		CHECK=\"aiaiai-checker $sparse $smatch $cppcheck $coccinelle $check_only --\" \
-		KCFLAGS='-Wno-missing-field-initializers -Wno-sign-compare' \
-		C=$check ${check:+CF="-D__CHECK_ENDIAN__"} W=1 SHELL=\"aiaiai-locker $split -l $lockfile\" \
+		C=$check ${check:+CF="-D__CHECK_ENDIAN__"} SHELL=\"aiaiai-locker $split -l $lockfile\" \
 		$kmake_opts $target"
 }
 
@@ -155,7 +156,7 @@ coccinelle=
 cocci_path=
 check_only=
 check=0
-kmake_opts=
+kmake_opts="KCFLAGS='-Wno-missing-field-initializers -Wno-sign-compare' W=1"
 verbose=
 
 while true; do
@@ -233,7 +234,7 @@ while true; do
 	shift
 done
 
-[ "$#" -ge 2 ] || die "Insufficient arguments"
+[ "$#" -ge 2 ] || fail_usage "Insufficient arguments"
 
 compile_helpers "$srcdir"
 

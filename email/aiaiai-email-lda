@@ -4,8 +4,8 @@
 # Author: Artem Bityutskiy
 # License: GPLv2
 
-srcdir="$(readlink -ev -- ${0%/*}/..)"
-PATH="$srcdir/helpers:$srcdir/email:$srcdir/helpers/libshell:$PATH"
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir:$srcdir/..:$srcdir/../helpers:$srcdir/../helpers/libshell:$PATH"
 
 . shell-error
 . shell-args
@@ -47,12 +47,6 @@ e-mail address, etc).
 <config.ini> - the configuration file
 
 Options:
-      --reap-archive=MIN     remove all files created earlier than MIN
-                             minutes ago from the mail archive directory;
-      --reap-incomplete=MIN  remove all incomplete patch series older than
-                             current time minus MIN minutes;
-      --test-mode            test mode - work as usually, but do not send
-                             replies;
   -v, --verbose              be verbose;
   -h, --help                 show this text and exit.
 EOF
@@ -111,10 +105,10 @@ reject_and_reply()
 
 	[ -z "$verbose" ] || cat -- "$lda_tmp/mail" >&2
 
-	if [ -z "$test_mode" ]; then
+	if [ "$cfg_disable_notifications" != "1" ]; then
 		mutt -x -H "$lda_tmp/mail" </dev/null
 	else
-		verbose "Do not actually send the email - we are in test mode"
+		verbose "Email notifications have been disabled in the configuration file"
 	fi
 }
 
@@ -219,24 +213,11 @@ queue_series()
 		# later.
 		local subj="$(fetch_header "Subject" < "$dir/0")"
 		subj="X-Aiaiai-Cover-Letter-Subject: $subj"
+		insert_header "$mbox" "$subj"
 
 		local id="$(fetch_header "Message-Id" < "$dir/0")"
 		id="X-Aiaiai-Cover-Letter-Message-Id: $id"
-
-		# The below trick allows us to avoid creating a separate
-		# temporary file: open the "$mbox" file, unlink, use the open
-		# file descriptor for reading and redirect the output to the
-		# new version of the "$mbox" file. We could instead use the
-		# "sponge" tool, though.
-		exec 3<$mbox
-		rm $verbose "$mbox" >&2
-		verbose "Adding \"$subj\""
-		formail -s formail -I "$subj" <&3 > "$mbox"
-
-		exec 3<$mbox
-		rm $verbose "$mbox" >&2
-		verbose "Adding \"$id\""
-		formail -s formail -I "$id" <&3 > "$mbox"
+		insert_header "$mbox" "$id"
 	fi
 	queue_mboxfile "$mbox" "$n"
 	rm $verbose -rf -- "$dir" >&2
@@ -470,28 +451,14 @@ cleanup_handler()
 }
 set_cleanup_handler cleanup_handler
 
-TEMP=`getopt -n $PROG -o v,h --long test-mode,reap-archive:,reap-incomplete:,verbose,help -- "$@"` ||
+TEMP=`getopt -n $PROG -o v,h --long reap-archive:,reap-incomplete:,verbose,help -- "$@"` ||
 	fail_usage ""
 eval set -- "$TEMP"
 
-test_mode=
-archive_min=
-incomplete_min=
 verbose=
 
 while true; do
 	case "$1" in
-	--test-mode)
-		test_mode=y
-		;;
-	--reap-archive)
-		archive_min="$(opt_check_number "$1" "$2")"
-		shift
-		;;
-	--reap-incomplete)
-		incomplete_min="$(opt_check_number "$1" "$2")"
-		shift
-		;;
 	-v|--verbose) verbose=-v
 		;;
 	-h|--help)
@@ -506,7 +473,7 @@ while true; do
 	shift
 done
 
-[ "$#" -eq 2 ] || die "Insufficient or too many arguments"
+[ "$#" -eq 2 ] || fail_usage "Insufficient or too many arguments"
 
 program_required "mutt" ""
 program_required "find" ""
@@ -582,8 +549,8 @@ process_mbox "$mbox"
 
 process_all_series "$mbox"
 
-[ -z "$incomplete_min" ] || reap_old "$lda_tmp" "$incomplete_min"
-[ -z "$archive_min" ] || reap_old "$mail" "$archive_min"
-[ -z "$archive_min" ] || reap_old "$queue_saved" "$archive_min"
+[ -z "$cfg_lda_reap_incomplete" ] || reap_old "$lda_tmp" "$cfg_lda_reap_incomplete"
+[ -z "$cfg_lda_reap_archive" ] || reap_old "$mail" "$cfg_lda_reap_archive"
+[ -z "$cfg_lda_reap_archive" ] || reap_old "$queue_saved" "$cfg_lda_reap_archive"
 
 rm $verbose -f -- "$lda_tmp_lock" >&2

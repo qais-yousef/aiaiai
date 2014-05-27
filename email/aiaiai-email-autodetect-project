@@ -1,0 +1,134 @@
+#!/bin/sh -efu
+
+# Copyright 2014 Intel Corporation
+# Author: Jacob Keller
+# License: GPLv2
+
+srcdir="$(readlink -ev -- ${0%/*})"
+PATH="$srcdir:$srcdir/..:$srcdir/../helpers:$srcdir/../helpers/libshell:$PATH"
+
+. shell-error
+. shell-args
+. shell-signal
+. aiaiai-sh-functions
+. aiaiai-email-sh-functions
+
+PROG="${0##*/}"
+export message_time="yes"
+
+# This is a small trick to make sure the script is portable - check if 'dash'
+# is present, and if yes - use it.
+if can_switch_to_dash; then
+	exec dash -euf -- "$srcdir/$PROG" "$@"
+	exit $?
+fi
+
+show_usage()
+{
+	cat <<-EOF
+Usage: $PROG [options] <cfgfile.ini> <mbox>
+
+This is an example hook used by aiaiai to automatically determine the project
+that the commit applies to, by using the index information from the first patch
+in the series, and checking each project for information about where patches
+apply. It depends on git-find-base which is included in the helpers folder.
+
+<cfgfile.ini>          - the configuration file.
+<mbox>                 - the mbox file containing the patch series
+EOF
+}
+
+fail_usage()
+{
+	[ -z "$1" ] || printf "%s\n" "$1"
+	show_usage
+	exit 1
+}
+
+verbose=-v
+tmpdir=
+cleanup_handler()
+{
+	if [ "$cfg_preserve_files" = "1" ]; then
+		verbose "Preserved tmpdir: $tmpdir"
+	else
+		[ -z "$tmpdir" ] || verbose "Removing $tmpdir";
+		rm -rf -- "$tmpdir" >&2
+	fi
+}
+set_cleanup_handler cleanup_handler
+
+[ "$#" -eq 2 ] || fail_usage "Insufficient or too many arguments"
+
+cfgfile="$(readlink -fv -- "$1")"; shift
+mbox="$(readlink -fv -- "$1")"; shift
+commit=
+
+# Parse the configuration file early
+parse_config "$cfgfile"
+
+# Create a temporary directory for storage of any files we might need
+tmpdir="$(mktemp --tmpdir="$cfg_workdir" -dt "$PROG.XXXX")"
+tmp_find_base="$tmpdir/git-find-base.out"
+
+# Get the expected project from the patch email
+to="$(fetch_header "To" < "$mbox")"
+cc="$(fetch_header "Cc" < "$mbox")"
+list="$(merge_addresses "$to" "$cc")"
+expected_prj="$(fetch_project_name "$list" "cfg_ownmail")"
+
+# Loop through every project and check if we can find a base commit. If we're
+# given an expected project in the email address, try it first, so that we
+# don't accidentally land on the wrong one.
+for prj in $expected_prj $(get_cfgfile_projects_list "$cfgfile"); do
+	# First to be safe, unset the project config variables that we use
+	unset pcfg_branch pcfg_path pcfg_name branch_base
+
+	# Now, parse the (new) project for pcfg variables
+	parse_prj_config "$cfgfile" "$prj"
+
+	# Skip non-existent projects
+	if [ -z "$pcfg_name" ]; then
+		verbose "Could not find $prj project"
+		continue
+	fi
+
+	# We set our own project variable called branch_base
+	branch_base="$(ini_config_get "$cfgfile" "prj_$prj" "branch_base")"
+
+	# Use git-find-base with the mbox file as input, and check to see if we
+	# can find a commit in this project. Use the branch_base if it's
+	# supplied, otherwise use the parent(s) of pcfg_branch as the limiter.
+	# This enables only checking a small range instead of having to check
+	# the full history.
+	commit="$(git --git-dir="$(git_dir "$pcfg_path")" find-base "$pcfg_branch" "${branch_base:-$pcfg_branch}^!" 2>>"$tmp_find_base" < "$mbox" \
+		|| verbose "No matching base commit in project $prj" )"
+
+	# Break out of loop once we find a base
+	[ -z "$commit" ] || break;
+done
+
+if [ -n "$commit" ]; then
+	if [ -n "$expected_prj" ] && [ "$expected_prj" != "$prj" ]; then
+		verbose "Expected project $expected_prj but got $prj"
+		printf "%s\n" "X-Aiaiai-Expected-Project: $expected_prj"
+	fi
+	# We found a commit, so insert proper headers
+	printf "%s\n" "X-Aiaiai-Project: $prj"
+	printf "%s\n" "X-Aiaiai-Commit: $commit"
+else
+	if [ -z "$expected_prj" ]; then
+
+	verbose "No project found. Output of git-find-base:"
+	cat "$tmp_find_base" 1>&2
+
+	cat <<EOF
+Aiaiai was unable to correctly determine the project for your patch submission.
+Normally the diff index information provided by git's diff mechanism is enough.
+The most probably cause is that your patch is based against an older reference
+to the project, and you need to rebase your submission against the current
+tree.
+EOF
+	exit 127
+	fi
+fi
