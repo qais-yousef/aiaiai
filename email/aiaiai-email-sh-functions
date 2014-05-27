@@ -181,10 +181,10 @@ config_check_boolean()
 
 	# Prefixing with _ makes it easier to catch empty string as false
 	case "_$value" in
-	_|_0|_false|no)
+	_|_0|_false|_no)
 		printf %s "0"
 		;;
-	_1|_true|yes)
+	_1|_true|_yes)
 		printf %s "1"
 		;;
 	*)
