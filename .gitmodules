@@ -1,0 +1,3 @@
+[submodule "helpers/libshell"]
+	path = helpers/libshell
+	url = git://git.infradead.org/users/jekeller/libshell.git
