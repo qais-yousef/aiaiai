@@ -17,9 +17,6 @@ Also it is useful to know that the scripts never modify the repositories
 you specify and the scripts remove all the temporary files upon exit,
 Ctrl-C interruption, or error (unless -p option is specified).
 
-Do not forget to compile the 'remap-log' and 'aiaiai-locker' tools before using
-Aiaiai by just typing "make".
-
 The layout of the repository.
 
 * aiaiai/email/
