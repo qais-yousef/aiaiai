@@ -42,7 +42,7 @@ Let's briefly review the contents of the repository.
 
 * email/aiaiai-email-lda
     This is Aiaiai's local delivery agent script which receives the incoming
-    emails from the mail server (via a pipe), procesess them (drops all e-mails
+    emails from the mail server (via a pipe), processes them (drops all e-mails
     which do not start with [PATCH*], detects and collects patch-sets), and
     puts them to the "queue" sub-directory of the work directory. This
     should, in turn, wake up the "aiaiai-email-dispatcher" script which will
@@ -81,7 +81,7 @@ $ cat $HOME/.forward
 
 Which made sure that all e-mails coming to aiaiai@our-domain.ququ were piped
 to the my-aiaiai-lda script. The script simply ran aiaiai-email-lda with
-tje options we needed:
+the options we needed:
 
 $ cat /home/aiaiai/bin/my-aiaiai-lda
 $HOME/git/email/aiaiai-email-lda -v --reap-archive=43200 --reap-incomplete=10 -- $HOME/aiaiai-workdir >> $HOME/aiaiai-logs/email-lda.log" 2>&1
