@@ -187,11 +187,14 @@ test_configuration()
 	if [ "$defconfig" = "randconfig" ]; then
 			# Generate a random configuration
 			make -C "$cloned_kernel1" ${arch:+ARCH="$arch"} \
-				${cross:+CROSS_COMPILE="$cross"} -- "$defconfig"
+				${cross:+CROSS_COMPILE="$cross"} -- "$defconfig" >&2
 
 			# Store this configuration in our temporary work dir
 			defconfig="$tmpdir/$config.random"
-			cp .config "$defconfig"
+			verbose "Copying random configuration to $defconfig"
+			cp .config "$defconfig" >&2
+
+			make -C "$cloned_kernel1" mrproper >&2
 	elif [ -n "$confdir" ]; then
 		defconfig="$confdir/$defconfig"
 		[ -f "$defconfig" ] || die "$defconfig is not available"
@@ -543,10 +546,6 @@ for defconfig in $defconfigs; do
 
 		cat "$tmpdir/$defconfig.stderr.diff"
 
-		if [ -f "$tmpdir/$defconfig.config" ]; then
-			printf "\n%s\n" "For reference, the random configuration used was:"
-			cat "$tmpdir/$defconfig.config"
-		fi
 	else
 		printf "\n%s\n" "Successfully built configuration \"$defconfig\", no issues."
 	fi
