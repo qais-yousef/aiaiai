@@ -251,6 +251,7 @@ if build_failed "$base_stderr_log"; then
 fi
 
 n=0
+series_failed_bisect=
 while [ "$n" -lt "$patch_cnt" ]; do
 	formail +$n -1 -s < "$mbox" > "$tmp_mbox"
 	compile_patch "$tmp_mbox" "$stdout_log" "$stderr_log"
@@ -264,10 +265,10 @@ while [ "$n" -lt "$patch_cnt" ]; do
 			printf "\n\n"
 		fi
 		build_failure "$defconfig_orig" "HEAD" "patch #$n"< "$stderr_log"
-		exit 0
+		series_failed_bisect="yes"
 	fi
 done
 
-if [ -n "$base_commit_failed" ]; then
-	printf "%s\n" "Base commit build failed, but the first patch fixed the build failure."
+if [ -n "$base_commit_failed" ] && [ -z "$series_failed_bisect" ]; then
+	printf "%s\n" "Base commit build failed, but the series fixed the build failure."
 fi
