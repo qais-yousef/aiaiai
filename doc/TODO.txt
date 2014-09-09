@@ -5,6 +5,7 @@ implementing them.
 
 
 * Improve user-friendliness.
+  * Append random configuration to email when it fails to build.
   * Separate all the e-mail front-end stuff to "doc/email".
   * Improve the the e-mail front-end configuration file. Make all the variables
     containing the text for end-users to refer instead. Just like
