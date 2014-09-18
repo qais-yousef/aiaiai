@@ -87,6 +87,7 @@ Options:
       --smatch           check with smatch while building;
       --cppcheck         check with cppcheck while building;
       --coccinelle       check with coccinelle (spatch) while building;
+      --checkpatch       run scripts/checkpatch.pl, if found in the project;
   -Q  --quick-fixes=F    sometimes it is necessary to carry out-of-tree patches
                          like quick build fixes and this option allows to pass
                          an mbox file with quick fixes which will be applied
