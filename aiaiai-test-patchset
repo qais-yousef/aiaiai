@@ -64,6 +64,13 @@ By default, $PROG assumes that defconfigs are part of the
 kernel tree, unless --confdir option is specified, in which case the defconfig
 files will be searched for only in the specified directory.
 
+Several static checking utilities can be enabled to provide enhanced
+information, if desired. These include sparse, smatch, cppcheck, and
+coccinelle. In addition scripts/checkpatch.pl is run if found in the project
+tree. You can disable a checker with --no[checker] or enable it with
+--[checker]. The last provided option on the command line wins, and supersedes
+other settings.
+
 Options:
   -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
   -c, --commit-id=ID     the commit id to test against (default is the head of
@@ -83,11 +90,11 @@ Options:
                          stand-alone defconfig files instead;
   -p, --preserve         preserve all the temporary files - do not clean up;
       --bisectability    test bisectability;
-      --sparse           check with sparse while building;
-      --smatch           check with smatch while building;
-      --cppcheck         check with cppcheck while building;
-      --coccinelle       check with coccinelle (spatch) while building;
-      --checkpatch       run scripts/checkpatch.pl, if found in the project;
+      --[no]sparse       check with sparse while building;
+      --[no]smatch       check with smatch while building;
+      --[no]cppcheck     check with cppcheck while building;
+      --[no]coccinelle   check with coccinelle (spatch) while building;
+      --[no]checkpatch   run scripts/checkpatch.pl, if found in the project;
   -Q  --quick-fixes=F    sometimes it is necessary to carry out-of-tree patches
                          like quick build fixes and this option allows to pass
                          an mbox file with quick fixes which will be applied
@@ -275,7 +282,7 @@ sparse=
 smatch=
 cppcheck=
 coccinelle=
-checkpatch=
+checkpatch="yes" # Keep enabled by default for backwards compatibility
 quick_fixes=
 targets="all"
 keywords=
@@ -332,6 +339,24 @@ while true; do
 		coccinelle="yes"
 		program_required "spatch" "Usually Linux distribution provide a 'spatch' or 'coccinelle' package"
 		;;
+	--checkpatch)
+		checkpatch="yes"
+		;;
+	--nosparse)
+		sparse=
+		;;
+	--nosmatch)
+		smatch=
+		;;
+	--nocppcheck)
+		cppcheck=
+		;;
+	--nococcinelle)
+		coccinelle=
+		;;
+	--nocheckpatch)
+		checkpatch=
+		;;
 	-Q|--quick-fixes)
 		quick_fixes="$(opt_check_read "$1" "$2")"
 		shift
@@ -339,9 +364,6 @@ while true; do
 	--targets)
 		targets="$2"
 		shift
-		;;
-	--checkpatch)
-		checkpatch="yes"
 		;;
 	-K|--keywords)
 		keywords="$(opt_check_read "$1" "$2")"
