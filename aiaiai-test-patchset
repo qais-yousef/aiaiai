@@ -247,6 +247,13 @@ test_configuration()
 
 	aiaiai-diff-log $verbose $preserve "$tmpdir/diff-for-diff-log" "$log1.stderr.log" \
 		-w "$tmpdir" "$log2.stderr.log" > "$tmpdir/$config.stderr.diff"
+
+	if [ -n "$preserve" ]; then
+		message "Preserving objdirs: $obj1 $obj2"
+	else
+		[ -d "$obj1" ] && (verbose "Removing $obj1"; rm -rf -- "$obj1" >&2)
+		[ -d "$obj2" ] && (verbose "Removing $obj2"; rm -rf -- "$obj2" >&2)
+	fi
 }
 
 tmpdir=
