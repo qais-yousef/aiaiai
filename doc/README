@@ -102,6 +102,28 @@ The 'aiaiai-test-patchset' script does all the testing work and outputs the
 test results to stdout. 'aiaiai-email-test-patchset' captures the output and
 sends it back to the patch submitter.
 
+A more complicated mail setup dealing with forwards and multi-part emails
+would be :
+$ cat /home/aiaiai/bin/my-aiaiai-lda
+	#!/bin/sh
+	formail_opt=""
+
+	mail=$(mktemp)
+	cat > $mail
+
+	to="$(formail -c -z -x "To:" < $mail)"
+	[ -n "$to" ] && formail_opt="$formail_opt -I \"To: $to\""
+
+	project="$(formail -c -z -x "X-Aiaiai-Project:" < $mail)"
+	[ -n "$project" ] && formail_opt="$formail_opt -I \"X-Aiaiai-Project: $project\""
+
+	commit="$(formail -c -z -x "X-Aiaiai-Commit:" < $mail)"
+	[ -n "$commit" ] && formail_opt="$formail_opt -I \"X-Aiaiai-Commit: $commit\""
+
+	cat "$mail" | eval formail $formail_opt -d -s "$HOME/git/email/aiaiai-email-lda" \
+	-v --reap-archive=43200 --reap-incomplete=10 -- "$HOME/aiaiai-workdir" \
+	>> "$HOME/aiaiai-logs/email-lda.log" 2>&1
+
 1.2 Email Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
 

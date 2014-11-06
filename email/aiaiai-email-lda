@@ -157,10 +157,10 @@ find_relatives()
 	local parent_id="$1"; shift
 
 	# Find the parent, children, and brothers
-	LC_ALL=C grep -i -l -r -- "In-Reply-To: $id" "$where" ||:
+	LC_ALL=C grep -i -l -r -- "\(In-Reply-To\|References\): $id" "$where" ||:
 	if [ -n "$parent_id" ]; then
 		LC_ALL=C grep -i -l -r -- "Message-Id: $parent_id" "$where" ||:
-		LC_ALL=C grep -i -l -r -- "In-Reply-To: $parent_id" "$where" ||:
+		LC_ALL=C grep -i -l -r -- "\(In-Reply-To\|References\): $parent_id" "$where" ||:
 	fi
 }
 
@@ -173,6 +173,7 @@ series_is_complete()
 	local cnt="$(ls -1 --ignore=0 -- "$dir" | wc -l)"
 	if [ "$cnt" -eq "$n" ]; then
 		local first_parent="$(fetch_header "In-Reply-To" < "$dir/1")"
+		[ -z "$first_parent" ] && first_parent="$(fetch_header "References" < "$dir/1")"
 		if [ -n "$first_parent" ]; then
 			# The first patch has a parent, must be the cover letter
 			if [ -f "$dir/0" ]; then
@@ -256,9 +257,9 @@ move_to_series()
 # try to collect all patches belonging to the series, and when it receives the
 # last patch, it queues the entire series.
 #
-# The series is collected using message ID headers - each patch, except of may
-# be the first one, must refer the previous patches ID via teh "In-Reply-To"
-# header.
+# The series is collected using message ID headers - each patch, except for the
+# first one, must refer the previous patches ID via the "In-Reply-To:" header
+# or "References:" header.
 process_series_mbox()
 {
 	local mbox="$1"; shift
@@ -269,12 +270,15 @@ process_series_mbox()
 
 	# Only patch 0/n or 1/n is allowed to have no parent
 	local parent_id="$(fetch_header "In-Reply-To" < "$mbox")"
+	[ -z "$parent_id" ] && parent_id="$(fetch_header "References" < "$mbox")"
+
 	if [ -z "$parent_id" ] && [ "$m" != 1 ] && [ "$m" != 0 ]; then
 		reject_and_reply "$mbox" <<EOF
 You sent a patch that does not conform to the requirements for Aiaiai's Local
 Delivery Agent. This patch is part of a series as indicated by its subject
-prefix.  However, it does not contain the correct "In-Reply-To:" header which
-is required for Aiaiai to determine which patch series it belongs with.
+prefix.  However, it does not contain the correct "In-Reply-To:" header or
+"References:" header which is required for Aiaiai to determine which patch
+series it belongs with.
 
 The most common reason for this issue is from not using the git-send-email
 utility, and using your own script which does not generate proper In-Reply-To:
