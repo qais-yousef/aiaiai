@@ -246,7 +246,7 @@ test_configuration()
 	verbose "Done with patched kernel"
 
 	aiaiai-diff-log $verbose $preserve "$tmpdir/diff-for-diff-log" "$log1.stderr.log" \
-		-w "$tmpdir" "$log2.stderr.log" > "$tmpdir/$config.stderr.diff"
+		        -w "$tmpdir" "$log2.stderr.log" > "$tmpdir/$config.stderr.diff"
 
 	if [ -n "$preserve" ]; then
 		message "Preserving objdirs: $obj1 $obj2"
@@ -269,9 +269,9 @@ cleanup_handler()
 
 	# Just in case we were interrupted, kill all our children
 	local child
-        for child in $(ps -o pid --no-headers --ppid "$$"); do
+	for child in $(ps -o pid --no-headers --ppid "$$"); do
 		kill "$child" > /dev/null 2>&1 ||:
-        done
+	done
 }
 set_cleanup_handler cleanup_handler
 
