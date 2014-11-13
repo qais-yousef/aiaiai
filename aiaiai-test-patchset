@@ -39,24 +39,37 @@ The configurations are specified as follows:
 
 where
 
-  * "defconfig" is the name kernel defconfig file to test
+  * "defconfig" is the name kernel defconfig file to test (or "randconfig")
   * "arch" is the architecture (translates to Kbuild's ARCH variable value)
   * "cross" is the cross-compiler prefix (translates to Kbuild's CROSS_COMPILE
      variable value).
 
 For example, the following list of configurations:
 
-  omap2_defconfig,arm,arm-eabi- i386_defconfig,i386 defconfig,s390,s390x-linux-
+  omap2_defconfig,arm,arm-eabi- i386_defconfig,i386 defconfig,s390,s390x-linux- randconfig,arm
 
 will make $PROG to test the patch in 3 configurations:
 
   1. defconfig "omap2_defconfig" with ARCH=arm and CROSS_COMPILE=arm-eabi-
   2. defconfig "i386_defconfig" with ARCH=arm and the default CROSS_COMPILE
   3. defconfig "defconfig" with ARCH=s390 and CROSS_COMPILE=s390x-linux-
+  4. a randomly generated configuration with ARCH=arm
+
+Note that randconfig pre-generates a single random configuration rather than
+using randconfig for each kernel compile. In this way, we guarantee that the
+same kernel configuration is used each build, rather than completely random
+each time.
 
 By default, $PROG assumes that defconfigs are part of the
 kernel tree, unless --confdir option is specified, in which case the defconfig
 files will be searched for only in the specified directory.
+
+Several static checking utilities can be enabled to provide enhanced
+information, if desired. These include sparse, smatch, cppcheck, and
+coccinelle. In addition scripts/checkpatch.pl is run if found in the project
+tree. You can disable a checker with --no[checker] or enable it with
+--[checker]. The last provided option on the command line wins, and supersedes
+other settings.
 
 Options:
   -j, --jobs=N           allow to run N jobs simultaneously (default is 1);
@@ -77,10 +90,11 @@ Options:
                          stand-alone defconfig files instead;
   -p, --preserve         preserve all the temporary files - do not clean up;
       --bisectability    test bisectability;
-      --sparse           check with sparse while building;
-      --smatch           check with smatch while building;
-      --cppcheck         check with cppcheck while building;
-      --coccinelle       check with coccinelle (spatch) while building;
+      --[no]sparse       check with sparse while building;
+      --[no]smatch       check with smatch while building;
+      --[no]cppcheck     check with cppcheck while building;
+      --[no]coccinelle   check with coccinelle (spatch) while building;
+      --[no]checkpatch   run scripts/checkpatch.pl, if found in the project;
   -Q  --quick-fixes=F    sometimes it is necessary to carry out-of-tree patches
                          like quick build fixes and this option allows to pass
                          an mbox file with quick fixes which will be applied
@@ -160,11 +174,6 @@ test_configuration()
 
 	[ -z "$arch" ] || arch_opt="-a $arch${cross:+",$cross"}"
 
-	if [ -n "$confdir" ]; then
-		defconfig="$confdir/$defconfig"
-		[ -f "$defconfig" ] || die "$defconfig is not available"
-	fi
-
 	if [ -n "$bisectability" ]; then
 		# We share the same source tree with 'aiaiai-test-bisectability', so
 		# wait for it (it could be run at the previous iteration)
@@ -178,6 +187,26 @@ test_configuration()
 	fi
 
 	git --git-dir="$(git_dir "$cloned_kernel1")" reset $quiet --hard "$commit_id1" >&2
+
+	# Enable use of a random condiguration that is stable between the
+	# before and after tests. If we just used 'randconfig' by default, then
+	# we wouldn't be testing the before and after kernels with the same
+	# configuration. We do this even if we have specified a confdir.
+	if [ "$defconfig" = "randconfig" ]; then
+			# Generate a random configuration
+			make -C "$cloned_kernel1" ${arch:+ARCH="$arch"} \
+				${cross:+CROSS_COMPILE="$cross"} -- "$defconfig" >&2
+
+			# Store this configuration in our temporary work dir
+			defconfig="$tmpdir/$config.random"
+			verbose "Copying random configuration to $defconfig"
+			cp .config "$defconfig" >&2
+
+			make -C "$cloned_kernel1" mrproper >&2
+	elif [ -n "$confdir" ]; then
+		defconfig="$confdir/$defconfig"
+		[ -f "$defconfig" ] || die "$defconfig is not available"
+	fi
 
 	verbose "Build non-patched kernel (\"$cloned_kernel1\", configuration \"$config\")"
 
@@ -253,7 +282,7 @@ sparse=
 smatch=
 cppcheck=
 coccinelle=
-checkpatch=
+checkpatch="yes" # Keep enabled by default for backwards compatibility
 quick_fixes=
 targets="all"
 keywords=
@@ -310,6 +339,24 @@ while true; do
 		coccinelle="yes"
 		program_required "spatch" "Usually Linux distribution provide a 'spatch' or 'coccinelle' package"
 		;;
+	--checkpatch)
+		checkpatch="yes"
+		;;
+	--nosparse)
+		sparse=
+		;;
+	--nosmatch)
+		smatch=
+		;;
+	--nocppcheck)
+		cppcheck=
+		;;
+	--nococcinelle)
+		coccinelle=
+		;;
+	--nocheckpatch)
+		checkpatch=
+		;;
 	-Q|--quick-fixes)
 		quick_fixes="$(opt_check_read "$1" "$2")"
 		shift
@@ -317,9 +364,6 @@ while true; do
 	--targets)
 		targets="$2"
 		shift
-		;;
-	--checkpatch)
-		checkpatch="yes"
 		;;
 	-K|--keywords)
 		keywords="$(opt_check_read "$1" "$2")"
@@ -524,6 +568,7 @@ for defconfig in $defconfigs; do
 		fi
 
 		cat "$tmpdir/$defconfig.stderr.diff"
+
 	else
 		printf "\n%s\n" "Successfully built configuration \"$defconfig\", no issues."
 	fi

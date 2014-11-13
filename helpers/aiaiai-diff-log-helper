@@ -10,7 +10,7 @@ Licence: GPLv2
 
 # Sorts 2 build logs and compares them. Blocks can be as follows.
 #
-# 1a. All consequitive lines starting with the same file prefix belong to one
+# 1a. All consecutive lines starting with the same file prefix belong to one
 # block, e.g.:
 #
 # drivers/s.c:472:22: warning: incorrect type in assignment (different address spaces) [sparse]
@@ -19,7 +19,7 @@ Licence: GPLv2
 #
 # (the prefix is "drivers/s.c:472")
 #
-# 1b. All consequitive lines starting with prefix "make:", "make[1]:", etc.
+# 1b. All consecutive lines starting with prefix "make:", "make[1]:", etc.
 # These usually belong to build failures.
 #
 # 2. GCC 'In file included from' blocks look like this:

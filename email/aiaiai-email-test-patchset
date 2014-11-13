@@ -330,13 +330,13 @@ sparse=
 smatch=
 cppcheck=
 coccinelle=
-checkpatch=
+checkpatch= # Note, checkpatch is enabled by default
 [ "$pcfg_bisectability" != "1" ] || bisectability="--bisectability"
 [ "$pcfg_sparse" != "1" ] || sparse="--sparse"
 [ "$pcfg_smatch" != "1" ] || smatch="--smatch"
 [ "$pcfg_cppcheck" != "1" ] || cppcheck="--cppcheck"
 [ "$pcfg_coccinelle" != "1" ] || coccinelle="--coccinelle"
-[ "$pcfg_checkpatch" != "1" ] || checkpatch="--checkpatch"
+[ "$pcfg_checkpatch" = "1" ] || checkpatch="--nocheckpatch"
 
 # Create the Cc list for replies that we'll be sending
 if [ "$pcfg_reply_to_all" = "1" ]; then

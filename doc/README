@@ -257,6 +257,14 @@ Here are some examples.
    IOW, just specify defconfigs, architectures, and cross-compiler prefixes at
    the end.
 
+4. Test a patch or a patch-set p.mbox against the net-next kernel tree,
+   against the 'origin/master' branch, using a randomly generated config, the
+   architecture is i386 (translates to 'make ARCH=i386'). Use 16 jobs.
+
+   cat p.mbox | ./aiaiai-test-patchset --bisectability --sparse --smatch \
+       --cppcheck --coccinelle -j 16 -c origin/master \
+       /<path>/net-next randconfig,i386
+
 Note, the 'aiaiai-test-patchset' script accepts one mbox file via stdio or the
 '-i' option. If you have several files belonging to one patch-set and you want
 to test them all, you need to concatenate them. Use the 'aiaiai-concat-mboxes'
