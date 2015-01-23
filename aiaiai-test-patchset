@@ -483,6 +483,13 @@ if [ -n "$checkpatch" ]; then
 		checkpatch_pl="$tmpdir/checkpatch/checkpatch.pl"
 		git show "$commit_id1:scripts/checkpatch.pl" > "$checkpatch_pl"
 		chmod $verbose u+x "$checkpatch_pl" >&2
+
+		# Also grab the typo corrections if the kernel under test has
+		# one (no need to report errors... if something is weird
+		# checkpatch will let us know).
+		if git cat-file -e "$commit_id1:scripts/spelling.txt" 2>/dev/null; then
+			git show "$commit_id1:scripts/spelling.txt" > "$tmpdir/checkpatch/spelling.txt"
+		fi
 	else
 		verbose "Can't find checkpatch.pl.. disabling checkpatch tests."
 		checkpatch=
