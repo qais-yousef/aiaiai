@@ -6,8 +6,7 @@ Description=Aiaiai Project Updater
 OnFailure=send-mail-on-failure@%n.service
 
 [Service]
-User=aiaiai
 ExecStart=/home/aiaiai/git/aiaiai/email/systemd/aiaiai-project-update -v /home/aiaiai/work/aiaiai.cfg
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

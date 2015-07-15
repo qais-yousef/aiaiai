@@ -1,0 +1,24 @@
+1 Overview
+~~~~~~~~~~
+
+This folder contains a set of systemd user services intended for use with
+systemd's User instance service manager. It includes a service file for the
+aiaiai main process, as well as a timer and service for keeping remote
+repositories up to date.
+
+These services can be configured to run on systemd's root instance by using
+"User=aiaiai", assuming your host system is running as aiaiai.
+
+The send-mail-on-failure script and service are intended to email the system
+administrator when the services fail. You probably want to customize it for
+your own email address.
+
+1.1 aiaiai-project-update
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+aiaiai-project-update is a script which reads the configuration file for
+repository paths, and runs remote-update on them. This enables automatic update
+of the remote repositories in a local cache. This helps prevent needing to
+specify remote url as the repository to clone from, and can reduce delay when
+running several patch tests at once, since each can clone locally instead of
+from the remote server.

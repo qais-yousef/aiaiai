@@ -12,4 +12,4 @@ OnUnitInactiveSec=1min
 Unit=aiaiai-project-update.service
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
