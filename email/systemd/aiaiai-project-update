@@ -87,7 +87,10 @@ parse_config "$cfgfile"
 
 find_unique_repositories "$cfgfile" | \
 while read -r repo; do
-	verbose "Updating $repo"
-
-	git --git-dir="$(git_dir "$repo")" remote update
+	if [ -d "$repo" ]; then
+		verbose "Updating $repo"
+		git --git-dir="$(git_dir "$repo")" remote update
+	else
+		verbose "No clone for $repo"
+	fi
 done
