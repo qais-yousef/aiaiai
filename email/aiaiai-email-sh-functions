@@ -29,7 +29,7 @@ __prefix="${__blanks}([^[:blank:]]*${__blanks}${__blank})?"
 # Patch number pattern
 __num="0*([[:digit:]]+)"
 # The "PATCH" word for case-insensitive matching
-__patch="[Pp][Aa][Tt][Cc][Hh]"
+__patch="([Pp][Aa][Tt][Cc][Hh])?"
 # Sed regexp matching correct subject
 __single="^${__blah}\[${__prefix}${__patch}.*\].*$"
 # Sed regexps matching m and n
