@@ -248,6 +248,10 @@ test_configuration()
 	aiaiai-diff-log $verbose $preserve "$tmpdir/diff-for-diff-log" "$log1.stderr.log" \
 		        -w "$tmpdir" "$log2.stderr.log" > "$tmpdir/$config.stderr.diff"
 
+	# MUST sync with bisect test before removing build artifacts
+	[ -z "$pid_bisect" ]   || wait "$pid_bisect"   || die "aiaiai-test-bisectability failed"
+	verbose "Done with bisectability test"
+
 	if [ -n "$preserve" ]; then
 		message "Preserving objdirs: $obj1 $obj2"
 	else
@@ -537,7 +541,6 @@ done
 
 [ -z "$checkpatch" ]   || wait "$pid_checkpatch" || die "checkpatch failed"
 [ -z "$keywords" ]     || wait "$pid_keywords" || die "aiaiai-match-keywords failed"
-[ -z "$pid_bisect" ]   || wait "$pid_bisect"   || die "aiaiai-test-bisectability failed"
 
 # Print the results
 
