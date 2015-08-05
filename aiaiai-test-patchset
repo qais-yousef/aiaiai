@@ -163,7 +163,6 @@ test_checkpatch()
 
 }
 
-pid_bisect=
 test_configuration()
 {
 	local config="$1"
@@ -171,20 +170,9 @@ test_configuration()
 	local arch="$(leave_second "$1")";
 	local cross="$(leave_third "$1")";
 	local arch_opt=
+	local pid_bisect=
 
 	[ -z "$arch" ] || arch_opt="-a $arch${cross:+",$cross"}"
-
-	if [ -n "$bisectability" ]; then
-		# We share the same source tree with 'aiaiai-test-bisectability', so
-		# wait for it (it could be run at the previous iteration)
-		if [ -n "$pid_bisect" ]; then
-			wait "$pid_bisect" || die "aiaiai-test-bisectability failed"
-			pid_bisect=
-		fi
-
-		# Clean-up the git tree after the test
-		rm $verbose -rf "$cloned_kernel1/.git/rebase-apply" >&2
-	fi
 
 	git --git-dir="$(git_dir "$cloned_kernel1")" reset $quiet --hard "$commit_id1" >&2
 
@@ -248,9 +236,14 @@ test_configuration()
 	aiaiai-diff-log $verbose $preserve "$tmpdir/diff-for-diff-log" "$log1.stderr.log" \
 		        -w "$tmpdir" "$log2.stderr.log" > "$tmpdir/$config.stderr.diff"
 
-	# MUST sync with bisect test before removing build artifacts
-	[ -z "$pid_bisect" ]   || wait "$pid_bisect"   || die "aiaiai-test-bisectability failed"
-	verbose "Done with bisectability test"
+	if [ -n "$bisectability" ]; then
+		# MUST sync with bisect test before removing build artifacts
+		wait "$pid_bisect" || die "aiaiai-test-bisectability failed"
+
+		# Clean-up the git tree after the test
+		rm $verbose -rf "$cloned_kernel1/.git/rebase-apply" >&2
+		verbose "Done with bisectability test"
+	fi
 
 	if [ -n "$preserve" ]; then
 		message "Preserving objdirs: $obj1 $obj2"
