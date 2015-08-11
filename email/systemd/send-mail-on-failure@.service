@@ -6,4 +6,4 @@ Description=Send mail on failure of %i
 
 [Service]
 # You should customize the email address here
-ExecStart=/home/aiaiai/git/aiaiai/systemd/send-mail-on-failure.sh %i root@localhost
+ExecStart=/home/aiaiai/git/aiaiai/email/systemd/send-mail-on-failure.sh %i root@localhost
