@@ -77,6 +77,9 @@ cc="$(fetch_header "Cc" < "$mbox")"
 list="$(merge_addresses "$to" "$cc")"
 expected_prj="$(fetch_project_name "$list" "cfg_ownmail")"
 
+# Get the patch-id for this mbox
+patchid="$(git patch-id --stable < "$mbox" | awk '{print $1}')"
+
 # Loop through every project and check if we can find a base commit. If we're
 # given an expected project in the email address, try it first, so that we
 # don't accidentally land on the wrong one.
@@ -95,6 +98,27 @@ for prj in $expected_prj $(get_cfgfile_projects_list "$cfgfile"); do
 
 	# We set our own project variable called branch_base
 	branch_base="$(ini_config_get "$cfgfile" "prj_$prj" "branch_base")"
+
+	# use git-patch-id to check if the patch has already been applied the
+	# branch_base and reject the patch in this case.
+	for rev in $(git --git-dir="$(git_dir "$pcfg_path")" "$branch_base"); do
+		revid="$(git --git-dir="$(git_dir "$pcfg_path")" show $rev |  git patch-id --stable | awk '{print $1}')"
+		shortname="$(git --git-dir="$(git_dir "$pcfg_path")" log -1 --pretty="%h (\"%s\")" $rev)"
+
+		# if we find a patch-id equivalent commit, exit and skip the patch with a warning to the user.
+		if [ "$patchid" = "$revid" ]; then
+		cat <<EOF
+Aiaiai found an equivalent commit for this patch already applied to the branch base
+
+${prj} : ${branch_base} -> ${shortname}
+
+It is likely that the maintainer applied your patch before Aiaiai got around to
+testing it. No further testing will be performed for your patch, as Aiaiai
+would not be able to apply it cleanly.
+EOF
+		exit 127
+		fi
+	done
 
 	# Use git-find-base with the mbox file as input, and check to see if we
 	# can find a commit in this project. Use the branch_base if it's
