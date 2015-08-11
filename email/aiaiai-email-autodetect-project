@@ -147,11 +147,12 @@ else
 	cat "$tmp_find_base" 1>&2
 
 	cat <<EOF
-Aiaiai was unable to correctly determine the project for your patch submission.
-Normally the diff index information provided by git's diff mechanism is enough.
-The most probably cause is that your patch is based against an older reference
-to the project, and you need to rebase your submission against the current
-tree.
+Aiaiai was not able to automatically determine the project for your patch
+submission using the index information provided by git-diff. This can be caused
+because your patch is based on work which is not yet applied to the queue, or
+if your patch is based on a really old version of the queue. You might try to
+rebase your submission and re-submit against the current development
+queue.
 EOF
 	exit 127
 	fi
