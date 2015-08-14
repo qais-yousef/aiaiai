@@ -101,7 +101,7 @@ for prj in $expected_prj $(get_cfgfile_projects_list "$cfgfile"); do
 
 	# use git-patch-id to check if the patch has already been applied the
 	# branch_base and reject the patch in this case.
-	for rev in $(git --git-dir="$(git_dir "$pcfg_path")" "$branch_base"); do
+	for rev in $(git --git-dir="$(git_dir "$pcfg_path")" rev-list "$branch_base"); do
 		revid="$(git --git-dir="$(git_dir "$pcfg_path")" show $rev |  git patch-id --stable | awk '{print $1}')"
 		shortname="$(git --git-dir="$(git_dir "$pcfg_path")" log -1 --pretty="%h (\"%s\")" $rev)"
 
