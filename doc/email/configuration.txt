@@ -52,7 +52,26 @@ though mostly have to deal with aiaiai-email-test-patchset.
     validation without error. Don't end with puncuation as aiaiai does this for
     you.
 
-2.2 Debug Settings
+2.2 LDA Settings
+~~~~~~~~~~~~~~~~
+
+These settings are used to configure the LDA aiaiai-email-lda program which is
+used to process incoming emails and set up so that aiaiai-email-dispatcher can
+find them via inotify. These replace the older --reap* options passed to
+aiaiai-email-lda by hand.
+
+* reap_archive
+    This option will cause the LDA to reap (remove) all archived email older
+    than the specified number of minutes. Useful if you want to save some disk
+    space and don't want to retain archived emails.
+
+* reap_incomplete
+    This option will cause the LDA to reap (remove) all incomplete series older
+    than the specified number of minutes. Useful if people keep sending
+    incomplete series or other internal issues cause series to remain for long
+    times.
+
+2.3 Debug Settings
 ~~~~~~~~~~~~~~~~~~
 
 These settings are generally not useful, but can be helpful for debugging
@@ -70,7 +89,7 @@ perform the same behavior.
     exit. Very useful if you need to inspect individual results or generated
     files. This replaces the old "-p" option.
 
-2.3 Default Project Settings
+2.4 Default Project Settings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Settings described here can either appear in the [defaults] section or in the
@@ -163,7 +182,7 @@ specified for each project.
     patch-submitter visible mirror of the local path used internally. If not
     supplied, aiaiai will display the path instead.
 
-2.4 Hooks
+2.5 Hooks
 ~~~~~~~~~
 
 The [hooks] section contains settings for various points where a hook can be
@@ -187,7 +206,7 @@ have a namespace collission with regular aiaiai configuration options.
 The only currently supported hook is the email hook configured by setting
 hooks.email to the path of an executable script.
 
-2.4.1 Email Hook
+2.5.1 Email Hook
 ~~~~~~~~~~~~~~~~
 
 This hook is run from within aiaiai-email-test-patchset, and is run just prior
