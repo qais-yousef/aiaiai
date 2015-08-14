@@ -34,8 +34,8 @@ __patch="([Pp][Aa][Tt][Cc][Hh])?"
 __single="^${__blah}\[${__prefix}${__patch}.*\].*$"
 # Sed regexps matching m and n
 __series="^${__blah}\[${__prefix}${__patch}.*${__blank}${__num}\/?${__num}${__blanks}\].*$"
-__mref="\3"
-__nref="\4"
+__mref="\4"
+__nref="\5"
 
 # Get "m" (patch's number in the series) from the subject
 # Usage: subject_m <subject>
