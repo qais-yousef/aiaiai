@@ -103,11 +103,14 @@ for prj in $expected_prj $(get_cfgfile_projects_list "$cfgfile"); do
 	# branch_base and reject the patch in this case.
 	for rev in $(git --git-dir="$(git_dir "$pcfg_path")" rev-list "$branch_base"); do
 		revid="$(git --git-dir="$(git_dir "$pcfg_path")" show $rev |  git patch-id --stable | awk '{print $1}')"
-		shortname="$(git --git-dir="$(git_dir "$pcfg_path")" log -1 --pretty="%h (\"%s\")" $rev)"
+
+		# Skip revisions with no patch id
+		[ -n "$revid" ] || continue
 
 		# if we find a patch-id equivalent commit, exit and skip the patch with a warning to the user.
 		if [ "$patchid" = "$revid" ]; then
-		cat <<EOF
+			shortname="$(git --git-dir="$(git_dir "$pcfg_path")" log -1 --pretty="%h (\"%s\")" $rev)"
+			cat <<EOF
 Aiaiai found an equivalent commit for this patch already applied to the branch base
 
 ${prj} : ${branch_base} -> ${shortname}
@@ -115,8 +118,9 @@ ${prj} : ${branch_base} -> ${shortname}
 It is likely that the maintainer applied your patch before Aiaiai got around to
 testing it. No further testing will be performed for your patch, as Aiaiai
 would not be able to apply it cleanly.
+
 EOF
-		exit 127
+			exit 127
 		fi
 	done
 
@@ -153,6 +157,7 @@ because your patch is based on work which is not yet applied to the queue, or
 if your patch is based on a really old version of the queue. You might try to
 rebase your submission and re-submit against the current development
 queue.
+
 EOF
 	exit 127
 	fi
