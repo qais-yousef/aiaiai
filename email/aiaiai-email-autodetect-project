@@ -100,8 +100,10 @@ for prj in $expected_prj $(get_cfgfile_projects_list "$cfgfile"); do
 	branch_base="$(ini_config_get "$cfgfile" "prj_$prj" "branch_base")"
 
 	# use git-patch-id to check if the patch has already been applied the
-	# branch_base and reject the patch in this case.
-	for rev in $(git --git-dir="$(git_dir "$pcfg_path")" rev-list "$branch_base"); do
+	# branch_base and reject the patch in this case. To prevent searching
+	# an entire project's history, limit the search to commits since the
+	# nearest annotated tag using git-describe.
+	for rev in $(git --git-dir="$(git_dir "$pcfg_path")" rev-list "$(git describe --abbrev=0 $branch_base)".."$branch_base"); do
 		revid="$(git --git-dir="$(git_dir "$pcfg_path")" show $rev |  git patch-id --stable | awk '{print $1}')"
 
 		# Skip revisions with no patch id
