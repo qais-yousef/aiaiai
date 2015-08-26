@@ -454,7 +454,7 @@ reap_old()
 	local min="$1"; shift
 
 	verbose "Reaping files older than \"$min\" minutes in \"$dir\""
-	find "$dir" -mindepth 1 -mmin +"$min" -exec rm $verbose -f -- "{}" ";" >&2
+	find "$dir" -mindepth 1 -maxdepth 1 -mmin +"$min" -exec rm $verbose -r -f -- "{}" ";" >&2
 }
 
 mbox=
