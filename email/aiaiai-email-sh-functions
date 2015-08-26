@@ -60,6 +60,17 @@ subject_check()
 	[ -n "$(printf "%s" "$1" | LC_ALL=C sed -n -E "/$__single/ p")" ]
 }
 
+# Check that an mbox will be recognized by git-apply
+# Usage: email_contains_patch <mbox>
+#
+# Based on return code from "git apply --stat". This command will print
+# diffstat information about the patch, and will fail with exit code 128 if the
+# file can't be recognized as a patch.
+email_contains_patch()
+{
+	git apply --stat "$1" >/dev/null
+}
+
 # Strip an e-mail address from the comma-separated list of e-mail addresses
 # Usage: strip_address <list> <email>
 strip_address()

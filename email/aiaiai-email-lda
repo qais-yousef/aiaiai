@@ -348,13 +348,12 @@ separator()
 	fi
 }
 
-# Process one e-mail. This e-mail may be part of a patch-set, or an individual
-# patch, or not a patch at all. The patches and non-patches are distinguished
-# using the subject (see the 'subject_check()' function). Non-patches are
-# dropped. Individual patches are queued right away. Patch-sets are stored in
-# a temporary directory and queued only when all the of them are collected.
-#
-# The e-mail to process is passed in "$1" in form of a path to the mbox file.
+# Proccess one e-mail. This e-mail may be part of a patch-set, may contain an
+# individual patch, or may not contain a patch at all. The patches and
+# non-patches are distinguished using is_email_patch() which is based on "git
+# apply --stat". Patch-set emails are distinquished from patches via use of the
+# subject line. Individual patches are queued right away. Patch-sets are stored
+# in a temporary location and queued when the entire patch set is collected.
 process_mbox()
 {
 	local mbox="$1";
@@ -379,9 +378,21 @@ process_mbox()
 	verbose "            Subject: $subj"
 	verbose "            Message-Id: $id"
 
-	# Filter out e-mails which do not start with the right prefix"
-	subject_check "$subj" ||
-		{ reject "$mbox" "\"$prefix_format\" prefix not found"; return; }
+
+
+	# Filter out e-mails which do not contain a patch
+	if ! email_contains_patch "$mbox" ; then
+		# Keep cover letter patches, but discard anything else
+		[ $(subject_m "$subj") = "0" ] ||
+			{ reject "$mbox" "mbox contains no patch and is not a cover letter"; return ; }
+	fi
+
+	# Queue patches which don't match subject format immediately
+	if ! subject_check "$subj" ; then
+		verbose "Queuing stand-alone patch with unrecognized subject format \"$subj\""
+		queue_mboxfile "$mbox" ""
+		return
+	fi
 
 	# If the patch prefix contains m/n, fetch m and n.
 	local m="$(subject_m "$subj")"
