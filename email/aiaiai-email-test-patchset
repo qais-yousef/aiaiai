@@ -126,6 +126,8 @@ EOF
 # should be passed the main body content from the hook output as stdin.
 error_hook_rejected_patch()
 {
+	reply_cc="$(merge_addresses "$reply_cc" "$cfg_adminmail")"
+
 	send_email <<EOF
 $(cat)
 
