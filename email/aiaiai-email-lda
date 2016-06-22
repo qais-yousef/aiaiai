@@ -383,7 +383,7 @@ process_mbox()
 	# Filter out e-mails which do not contain a patch
 	if ! email_contains_patch "$mbox" ; then
 		# Keep cover letter patches, but discard anything else
-		[ $(subject_m "$subj") = "0" ] ||
+		[ "$(subject_m "$subj")" = "0" ] ||
 			{ reject "$mbox" "mbox contains no patch and is not a cover letter"; return ; }
 	fi
 
