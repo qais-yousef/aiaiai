@@ -6,6 +6,7 @@ Description=Aiaiai Email Dispatcher
 OnFailure=send-mail-on-failure@%n.service
 
 [Service]
+User=aiaiai
 EnvironmentFile=/home/aiaiai/git/aiaiai/email/systemd/aiaiai.conf
 ExecStart=/home/aiaiai/git/aiaiai/email/aiaiai-email-dispatcher -v ${AIAIAI_QUEUE_DIR} ${AIAIAI_CONFIG_FILE}
 
