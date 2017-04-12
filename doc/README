@@ -130,6 +130,15 @@ $ cat /home/aiaiai/bin/my-aiaiai-lda
 aiaiai-email scripts use a common configuration file, which is documented in
 doc/email/example-aiaiai.cfg
 
+By default aiaiai expects email targeting a specific project to be delivered to
+a specific aiaiai recipient address which includes it, e.g:
+aiaiai+foo@domain.tld.
+
+In case you would want to use the same aiaiai recipient email address for all
+projects, you need to create a hook file which will be looking at the
+X-Aiaiai-Project header in the mbox file, and output it to stdout (see:
+email/aiaiai-email-test-patchset)
+
 1.3 Non-e-mail scripts
 ~~~~~~~~~~~~~~~~~~~~~~
 
