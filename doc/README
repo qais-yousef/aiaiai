@@ -84,7 +84,8 @@ to the my-aiaiai-lda script. The script simply ran aiaiai-email-lda with
 the options we needed:
 
 $ cat /home/aiaiai/bin/my-aiaiai-lda
-$HOME/git/email/aiaiai-email-lda -v --reap-archive=43200 --reap-incomplete=10 -- $HOME/aiaiai-workdir >> $HOME/aiaiai-logs/email-lda.log" 2>&1
+#!/bin/sh
+$HOME/git/email/aiaiai-email-lda -v --reap-archive=43200 --reap-incomplete=10 -- $HOME/aiaiai-workdir >> "$HOME/aiaiai-logs/email-lda.log" 2>&1
 
 
 So, aiaiai-email-lda collects patches belonging to the patch-sets, and when it
